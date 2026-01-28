@@ -51,11 +51,75 @@ class axi_lite_driver extends uvm_driver#(axi_lite_transaction);
 
 
     task drive_write(axi_lite_transaction tr);
+        // STEP 1: Write Address Channel
+        repeat(cfg.default_ready_delay) @(vif.master_cb);
 
+        vif.master_cb.awaddr    <= tr.addr;
+        vif.master_cb.awprot    <= tr.prot;
+        vif.master_cb.awvalid   <= 1'b1;
+
+
+        @(vif.master_cb);
+        while (!vif.master_cb.awready)
+            @(vif.master_cb);
+        
+        vif.master_cb.awvalid <= 1'b0;
+
+        // step2: Write Data Channel
+        vif.master_cb.wdata <= tr.wdata;
+        vif.master_cb.wstrb <= tr.wstrb;
+        vif.master_cb.wvalid <= 1'b1;
+
+        @(vif.master_cb);
+        while (!vif.master_cb.wready)
+            @(vif.master_cb);
+        
+        vif.master_cb.wvalid <= 1'b0;
+
+        // Step 3: Write Response Channel
+        vif.master_cb.bready <= 1'b1;
+
+        @(vif.master_cb);
+        while (!vif.master_cb.bvalid)
+            @(vif.master_cb)
+        
+        tr.bresp = vif.master_cb.bresp;
+
+        vif.master_cb.bready <= 1'b0;
+        `uvm_info(get_type_name(), $sformatf("Wrote: %s", tr.convert2string()), UVM_MEDIUM)
 
     endtask
 
     task drive_read(axi_lite_transaction tr);
+
+        // STEP 1: Drive Read Address Channel
+
+        repeat(cfg.default_ready_delay) @(vif.master_cb)
+        
+        vif.master_cb.araddr <= tr.addr;
+        vif.master_cb.arprot <= tr.prot;
+        vif.master_cb.arvalid <= 1'b1;
+
+        @(vif.master_cb);
+        while (!vif.master_cb.arready)
+            @(vif.master_cb)
+
+        vif.master_cb.ar_valid <= 1'b0;
+
+        //Step 2: Wait for Read Data Response
+        vif.master_cb.rready <= 1'b1;
+
+        @(vif.master_cb);
+        while (!vif.master_cb.rvalid);
+            @(vif.master_cb)
+        
+        tr.rdata = vif.master_cb.rdata;
+        tr.rresp = vif.master_cb.rresp;
+
+        vif.master_cb.rready <= 1'b0;
+
+        `uvm_info(get_type_name(), $sformatf("Read: %s", tr.convert2string()), UVM_MEDIUM)
+        
 
     endtask
 
