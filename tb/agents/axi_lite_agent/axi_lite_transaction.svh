@@ -2,44 +2,30 @@
 `define AXI_LITE_TRANSACTION_SVH
 
 class axi_lite_transaction extends uvm_sequence_item;
-      // AXI LITE slave port
-//   input  axi_lite_req_t               axi_lite_req_i,
-//   output axi_lite_resp_t              axi_lite_resp_o,
-//typedef struct packed {
-//   aw_chan_lite_t aw;       // Write address channel
-//   logic          aw_valid; // Write address valid
-//   w_chan_lite_t  w;        // Write data channel
-//   logic          w_valid;  // Write data valid
-//   logic          b_ready;  // Write response ready
-//   ar_chan_lite_t ar;       // Read address channel
-//   logic          ar_valid; // Read address valid
-//   logic          r_ready;  // Read data ready
-// } axi_lite_req_t;
+    
+    // ============================================
+    // NOTE: This class uses parameters from axi_lite_pkg
+    // To change widths, modify axi_lite_pkg.sv
+    // ============================================
+    //   AXI_ADDR_WIDTH - Address bus width
+    //   AXI_DATA_WIDTH - Data bus width
+    //   AXI_STRB_WIDTH - Strobe width (DATA_WIDTH/8)
+    // ============================================
 
+    // ============================================
+    // TRANSACTION TYPE
+    // ============================================
     typedef enum {READ, WRITE} access_type_e;
     rand access_type_e access_type;
 
+    // ============================================
+    // REQUEST FIELDS (from axi_lite_req_t)
+    // ============================================
+    rand bit [AXI_ADDR_WIDTH-1:0] addr;
+    rand bit [2:0]                prot;
 
-// typedef struct packed {
-//   addr_t          addr; // [31:0]
-//   axi_pkg::prot_t prot; // [2:0]
-// } aw_chan_lite_t;
-
-    rand bit [31:0] addr;
-    rand bit [ 2:0] prot;
-
-// typedef struct packed {
-//   data_t data; // [31:0]
-//   strb_t strb; // [3:0]
-// } w_chan_lite_t;
-
-    rand bit [31:0] wdata;
-    rand bit [ 3:0] wstrb;
-
-// typedef struct packed {
-//   addr_t          addr; // [31:0]
-//   axi_pkg::prot_t prot; // [2:0]
-// } ar_chan_lite_t;
+    rand bit [AXI_DATA_WIDTH-1:0] wdata;
+    rand bit [AXI_STRB_WIDTH-1:0] wstrb;
 
     // ============================================
     // CONSTRAINTS
@@ -51,7 +37,11 @@ class axi_lite_transaction extends uvm_sequence_item;
     }
 
     constraint aligned_addr_c {
-        addr[1:0] == 2'b00;  // 32-bit word-aligned addresses
+        // Word-aligned based on data width
+        if (AXI_DATA_WIDTH == 32)
+            addr[1:0] == 2'b00;  // 32-bit aligned
+        else if (AXI_DATA_WIDTH == 64)
+            addr[2:0] == 3'b000; // 64-bit aligned
     }
 
     // ============================================
@@ -64,30 +54,12 @@ class axi_lite_transaction extends uvm_sequence_item;
         end
     endfunction
 
-    
-/////////// output
-// typedef struct packed {
-//   logic          aw_ready; // Write address ready
-//   logic          w_ready;  // Write data ready
-//   b_chan_lite_t  b;        // Write response channel
-//   logic          b_valid;  // Write response valid
-//   logic          ar_ready; // Read address ready
-//   r_chan_lite_t  r;        // Read data channel
-//   logic          r_valid;  // Read data valid
-// } axi_lite_resp_t;
-
-// typedef struct packed {
-//   axi_pkg::resp_t resp; // [1:0]
-// } b_chan_lite_t;
-
-    bit [1:0] bresp;
-
-// typedef struct packed {
-//   data_t          data; // [31:0]
-//   axi_pkg::resp_t resp; // [1:0]
-// } r_chan_lite_t;
-    bit [31:0] rdata;
-    bit [ 1:0] rresp;
+    // ============================================
+    // RESPONSE FIELDS (from axi_lite_resp_t)
+    // ============================================
+    bit [1:0]                bresp;
+    bit [AXI_DATA_WIDTH-1:0] rdata;
+    bit [1:0]                rresp;
 
 
     `uvm_object_utils_begin(axi_lite_transaction)

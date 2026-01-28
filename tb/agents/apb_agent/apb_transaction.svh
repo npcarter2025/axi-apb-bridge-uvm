@@ -4,21 +4,12 @@
 class apb_transaction extends uvm_sequence_item;
 
     // ============================================
-    // APB4 PROTOCOL REFERENCE
+    // NOTE: This class uses parameters from apb_pkg
+    // To change widths, modify apb_pkg.sv
     // ============================================
-    // apb_req_t (Master → Slave):
-    //   paddr   [31:0] - Address
-    //   pprot   [2:0]  - Protection
-    //   psel           - Slave select (driver controls)
-    //   penable        - Enable (driver controls)
-    //   pwrite         - 1=Write, 0=Read (driver controls)
-    //   pwdata  [31:0] - Write data
-    //   pstrb   [3:0]  - Write strobes
-    //
-    // apb_resp_t (Slave → Master):
-    //   pready         - Transfer complete
-    //   prdata  [31:0] - Read data
-    //   pslverr        - Slave error
+    //   APB_ADDR_WIDTH - Address bus width
+    //   APB_DATA_WIDTH - Data bus width
+    //   APB_STRB_WIDTH - Strobe width (DATA_WIDTH/8)
     // ============================================
 
     // ============================================
@@ -32,17 +23,17 @@ class apb_transaction extends uvm_sequence_item;
     // ============================================
     // Note: psel, penable, pwrite are controlled by driver
     // (they implement the APB state machine)
-    rand bit [31:0] paddr;   // Address
-    rand bit [2:0]  pprot;   // Protection type
-    rand bit [31:0] pwdata;  // Write data (only for WRITE)
-    rand bit [3:0]  pstrb;   // Byte strobes (only for WRITE)
+    rand bit [APB_ADDR_WIDTH-1:0] paddr;   // Address
+    rand bit [2:0]                pprot;   // Protection type
+    rand bit [APB_DATA_WIDTH-1:0] pwdata;  // Write data (only for WRITE)
+    rand bit [APB_STRB_WIDTH-1:0] pstrb;   // Byte strobes (only for WRITE)
 
     // ============================================
     // RESPONSE FIELDS (from apb_resp_t)
     // ============================================
     // Filled by driver/monitor after slave responds
-    bit [31:0] prdata;       // Read data (only for READ)
-    bit        pslverr;      // Slave error response
+    bit [APB_DATA_WIDTH-1:0] prdata;       // Read data (only for READ)
+    bit                      pslverr;      // Slave error response
 
     // ============================================
     // CONSTRAINTS
@@ -54,7 +45,11 @@ class apb_transaction extends uvm_sequence_item;
     }
 
     constraint aligned_addr_c {
-        paddr[1:0] == 2'b00;  // 32-bit word-aligned addresses
+        // Word-aligned based on data width
+        if (APB_DATA_WIDTH == 32)
+            paddr[1:0] == 2'b00;  // 32-bit aligned
+        else if (APB_DATA_WIDTH == 64)
+            paddr[2:0] == 3'b000; // 64-bit aligned
     }
 
     // ============================================
