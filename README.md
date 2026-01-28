@@ -78,48 +78,166 @@ All dependencies use **Solderpad Hardware License v0.51** and are tracked as git
 
 ## Project Structure
 
+
 ```
-AXI_TO_APB_BRIDGE_UVM/
-├── deps/                      # Git submodules (dependencies)
-│   ├── axi/                   # AXI protocol IP (submodule)
-│   └── common_cells/          # Common cells library (submodule)
-├── dut_axi_lite/              # Design Under Test
-│   └── axi_lite_to_apb.sv     # Bridge module
-├── rtl/                       # Local RTL additions
-│   ├── common_cells/          # Custom modules
-│   │   └── clk_rst_gen.sv     # Clock/reset generator
-│   ├── rand_id_queue_pkg.sv   # Stub implementation
-│   └── README_RAND_ID_QUEUE.md
-├── sim/                       # AMD-style simulation structure
-│   ├── files/                 # Modular filelists
-│   │   ├── common/            # Tool-independent filelists
-│   │   │   ├── top.f          # Top-level (includes all below)
-│   │   │   ├── deps_common_cells.f
-│   │   │   ├── deps_axi.f
-│   │   │   ├── rtl.f          # DUT and local RTL
-│   │   │   └── tb.f           # Testbench files
-│   │   └── vcs/               # VCS-specific options
-│   │       └── compile.f      # VCS compiler flags
-│   ├── scripts/               # Helper scripts
-│   │   └── run_vcs.sh         # Convenience test runner
-│   ├── build/                 # Build artifacts (gitignored)
-│   ├── logs/                  # Simulation logs (gitignored)
-│   ├── Makefile               # Main dispatcher Makefile
-│   └── Makefile.vcs           # VCS-specific rules
-├── include/                   # Local header files
-│   ├── axi/                   # AXI typedefs (copied)
-│   └── common_cells/          # Common cells headers (copied)
-├── pkg/                       # Local packages
-│   ├── axi_pkg.sv
-│   └── cf_math_pkg.sv
-├── docs/                      # Documentation
-│   ├── RUNNING_TESTS.md       # How to run tests
-│   ├── VCS_SETUP_NOTE.md      # VCS setup notes
-│   ├── STRUCT_REFERENCE.md    # Struct documentation
-│   └── iDMA_COMPATIBILITY.md  # iDMA integration notes
-└── README.md                  # This file
+axi-apb-bridge-uvm/
+├── tb/                              # Testbench root
+│   ├── agents/                      # Reusable UVM agents/VCs
+│   │   ├── axi_lite_agent/          # AXI4-Lite agent
+│   │   │   ├── axi_lite_pkg.sv                    # Package file (includes all below)
+│   │   │   ├── axi_lite_if.sv                     # Interface (outside package)
+│   │   │   ├── axi_lite_transaction.sv            # Transaction class ⭐
+│   │   │   ├── axi_lite_config.sv                 # Agent configuration
+│   │   │   ├── axi_lite_sequencer.sv              # Sequencer
+│   │   │   ├── axi_lite_driver.sv                 # Driver
+│   │   │   ├── axi_lite_monitor.sv                # Monitor
+│   │   │   ├── axi_lite_coverage.sv               # Coverage collector (optional)
+│   │   │   ├── axi_lite_agent.sv                  # Agent (top-level)
+│   │   │   └── sequences/                         # Sequence library
+│   │   │       ├── axi_lite_base_seq.sv
+│   │   │       ├── axi_lite_random_seq.sv
+│   │   │       ├── axi_lite_write_seq.sv
+│   │   │       ├── axi_lite_read_seq.sv
+│   │   │       └── axi_lite_directed_seq.sv
+│   │   │
+│   │   ├── apb_agent/               # APB4 agent
+│   │   │   ├── apb_pkg.sv                         # Package file
+│   │   │   ├── apb_if.sv                          # Interface (outside package)
+│   │   │   ├── apb_transaction.sv                 # Transaction class ⭐
+│   │   │   ├── apb_config.sv                      # Agent configuration
+│   │   │   ├── apb_sequencer.sv                   # Sequencer
+│   │   │   ├── apb_driver.sv                      # Driver (slave/master modes)
+│   │   │   ├── apb_monitor.sv                     # Monitor
+│   │   │   ├── apb_coverage.sv                    # Coverage collector (optional)
+│   │   │   ├── apb_agent.sv                       # Agent (top-level)
+│   │   │   └── sequences/                         # Sequence library
+│   │   │       ├── apb_slave_seq.sv
+│   │   │       ├── apb_master_seq.sv
+│   │   │       └── apb_error_seq.sv
+│   │   │
+│   │   └── axi_agent/               # AXI4 Full agent (Phase 2)
+│   │       └── [similar structure]
+│   │
+│   ├── env/                         # Test environments
+│   │   ├── axi_lite_to_apb_env/     # Phase 1 environment ⭐
+│   │   │   ├── axi_lite_to_apb_env_pkg.sv
+│   │   │   ├── axi_lite_to_apb_env.sv
+│   │   │   ├── axi_lite_to_apb_virtual_sequencer.sv  # Coordinates sequences
+│   │   │   ├── axi_lite_to_apb_scoreboard.sv
+│   │   │   ├── axi_lite_to_apb_predictor.sv          # Uses golden model
+│   │   │   ├── axi_lite_to_apb_golden_model.sv       # DPI-C wrapper
+│   │   │   └── axi_lite_to_apb_coverage.sv
+│   │   │
+│   │   ├── axi_to_axi_lite_env/     # Phase 2 environment
+│   │   │   └── [similar structure]
+│   │   │
+│   │   └── integrated_env/          # Phase 3 full system
+│   │       ├── integrated_virtual_sequencer.sv  # Top-level coordination
+│   │       └── [combines both envs]
+│   │
+│   ├── tests/                       # Test library
+│   │   ├── axi_lite_to_apb_tests/   # Phase 1 tests
+│   │   │   ├── axi_lite_to_apb_base_test.sv
+│   │   │   ├── axi_lite_to_apb_sanity_test.sv
+│   │   │   ├── axi_lite_to_apb_random_test.sv
+│   │   │   ├── axi_lite_to_apb_stress_test.sv
+│   │   │   ├── axi_lite_to_apb_error_test.sv
+│   │   │   └── axi_lite_to_apb_pipeline_test.sv
+│   │   │
+│   │   ├── axi_to_axi_lite_tests/   # Phase 2 tests
+│   │   └── integrated_tests/        # Phase 3 tests
+│   │
+│   ├── top/                         # Top-level testbench files
+│   │   ├── tb_axi_lite_to_apb_top.sv
+│   │   ├── tb_axi_to_axi_lite_top.sv
+│   │   └── tb_integrated_top.sv
+│   │
+│   ├── common/                      # Shared utilities
+│   │   ├── tb_pkg.sv
+│   │   ├── tb_params.sv
+│   │   └── tb_utils.sv
+│   │
+│   ├── ral/                         # Register Abstraction Layer (Optional)
+│   │   ├── apb_reg_model.sv         # RAL for APB slave registers
+│   │   ├── apb_reg_adapter.sv       # APB RAL adapter
+│   │   └── reg_sequences/           # Register access sequences
+│   │       ├── reg_hw_reset_seq.sv
+│   │       ├── reg_bit_bash_seq.sv
+│   │       └── reg_access_seq.sv
+│   │
+│   └── dpi/                         # DPI-C Components
+│       ├── memory/                  # Memory model (for APB slave)
+│       │   ├── dpi_memory.sv
+│       │   ├── dpi_memory.h
+│       │   └── dpi_memory.c
+│       └── golden_model/            # Golden reference model ⭐
+│           ├── bridge_golden_model.sv   # SV wrapper
+│           ├── bridge_golden_model.h    # C header
+│           ├── bridge_golden_model.c    # C implementation
+│           └── Makefile                 # Compile C code
+│
+├── sim/                             # Simulation scripts
+│   ├── Makefile.uvm                 # UVM-specific Makefile
+│   ├── compile_uvm.f                # UVM compilation filelist
+│   ├── files/
+│   │   └── uvm/
+│   │       ├── agents.f
+│   │       ├── env.f
+│   │       └── tests.f
+│   └── scripts/
+│       ├── run_uvm_test.sh
+│       └── regression.sh
+│
+└── docs/
+    ├── UVM_TESTBENCH_ARCHITECTURE.md  # This document
+    ├── VERIFICATION_PLAN.md
+    └── COVERAGE_PLAN.md
 ```
 
+
+
+### Component Interaction Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    UVM ENVIRONMENT                              │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────┐     │
+│  │         Virtual Sequencer (Phase 1 Optional)         │     │
+│  │  ┌────────────────┐         ┌────────────────┐      │     │
+│  │  │ AXI-Lite Seqr  │         │   APB Seqr     │      │     │
+│  │  │   (ref)        │         │   (ref)        │      │     │
+│  │  └───────┬────────┘         └────────┬───────┘      │     │
+│  └──────────┼──────────────────────────┼──────────────┘     │
+│             │                           │                     │
+│  ┌──────────▼────────┐       ┌─────────▼────────┐           │
+│  │  AXI-Lite Agent   │       │    APB Agent      │           │
+│  │  ┌──────────────┐ │       │  ┌──────────────┐│           │
+│  │  │ Sequencer    │ │       │  │ Sequencer    ││           │
+│  │  ├──────────────┤ │       │  ├──────────────┤│           │
+│  │  │ Driver       │ │       │  │ Driver       ││           │
+│  │  │              │ │       │  │ (Slave mode) ││           │
+│  │  │              │ │       │  │  ┌─────────┐ ││           │
+│  │  │              │ │       │  │  │ Memory  │ ││           │
+│  │  │              │ │       │  │  │ Model   │ ││           │
+│  │  │              │ │       │  │  │         │ ││           │
+│  │  │              │ │       │  │  │ DPI-C   │ ││ ◄─ Optional
+│  │  │              │ │       │  │  │ or SV   │ ││           │
+│  │  │              │ │       │  │  └─────────┘ ││           │
+│  │  ├──────────────┤ │       │  ├──────────────┤│           │
+│  │  │ Monitor      │ │       │  │ Monitor      ││           │
+│  │  └──────────────┘ │       │  └──────────────┘│           │
+│  └───────────────────┘       └───────────────────┘           │
+│                                                               │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  RAL (Optional - for register-based APB slaves)      │   │
+│  │  ┌────────────┐  ┌──────────┐  ┌────────────────┐   │   │
+│  │  │ Reg Model  │  │ Adapter  │  │  Predictor     │   │   │
+│  │  └────────────┘  └──────────┘  └────────────────┘   │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
+```
 ### AMD-Style Organization
 
 This project follows AMD's modular verification structure:
