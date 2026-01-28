@@ -58,6 +58,34 @@ class apb_monitor extends uvm_monitor;
         // TODO: Log transaction
         
         @(vif.monitor_cb);
+        while (!(vif.monitor_cb.psel && !vif.monitor_cb.penable))
+            @(vif.monitor_cb);
+
+        tr = apb_transaction::type_id::create("tr");
+
+        tr.paddr = vif.monitor_cb.paddr;
+        tr.pprot = vif.monitor_cb.pprot;
+        tr.access_type = vif.monitor_cb.pwrite ? WRITE : READ;
+
+        if (tr.is_write()) begin 
+            tr.pwdata = vif.monitor_cb.pwdata;
+            tr.pstrb = vif.monitor_cb.pstrb;
+        end
+
+        @(vif.monitor_cb);
+        while(!(vif.monitor_cb.psel && vif.monitor_cb.penable && vif.monitor_cb.pready))
+            @(vif.monitor_cb);
+
+        if (tr.is_read())
+            tr.prdata = vif.monitor_cb.prdata;
+        
+        tr.pslverr = vif.monitor_cb.pslverr;
+
+        ap.write(tr);
+
+        `uvm_info(get_type_name(), $sformatf("APB Transaction: %s", tr.convert2string()), UVM_MEDIUM)
+        
+
     endtask        
 
 
