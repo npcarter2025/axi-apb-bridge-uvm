@@ -1,0 +1,15 @@
+[submodule "deps/axi"]
+	path = deps/axi
+	url = git@github.com:npcarter2025/axi.git
+[submodule "deps/common_cells"]
+	path = deps/common_cells
+	url = git@github.com:npcarter2025/common_cells.git
+[submodule "deps/common_verification"]
+	path = deps/common_verification
+	url = git@github.com:npcarter2025/common_verification.git
+[submodule "deps/iDMA"]
+	path = deps/iDMA
+	url = git@github.com:npcarter2025/iDMA.git
+[submodule "deps/apb"]
+	path = deps/apb
+	url = git@github.com:npcarter2025/apb.git

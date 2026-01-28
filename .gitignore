@@ -1,0 +1,54 @@
+# Build artifacts (AMD-style sim/ structure)
+sim/build/
+sim/logs/
+build/
+logs/
+*.log
+
+# Reference testbench (moved to deps/axi)
+reference/
+
+# VCS specific
+csrc/
+simv*
+*.vpd
+*.daidir/
+ucli.key
+vc_hdrs.h
+DVEfiles/
+AN.DB/
+.vcs*/
+.synopsys*/
+
+# QuestaSim/ModelSim specific
+work/
+transcript
+vsim.wlf
+*.wlf
+modelsim.ini
+.vlogansetup*
+
+# Xcelium specific (for future multi-tool support)
+xcelium.d/
+xmsim.log
+xrun.log
+
+# Editor files
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# UVM specific (for future)
+uvm_report.txt
+*.ucdb
+.simvision/
+
+verdi_config_file
+
+build_axi_tests

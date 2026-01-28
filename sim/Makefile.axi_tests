@@ -1,0 +1,222 @@
+# ============================================================================
+# Makefile to Run AXI Repository Tests with VCS
+# ============================================================================
+# This Makefile allows you to compile and run any testbench from the
+# deps/axi/test/ directory
+#
+# Usage:
+#   make -f Makefile.axi_tests list                    # Show all tests
+#   make -f Makefile.axi_tests test TEST=axi_to_axi_lite    # Run specific test
+#   make -f Makefile.axi_tests test TEST=axi_lite_to_apb    # Run your bridge test
+
+# Tool settings
+VCS = vcs
+SIMV = simv
+
+# Directories
+AXI_DIR = ../deps/axi
+COMMON_DIR = ../deps/common_cells
+TEST_DIR = $(AXI_DIR)/test
+BUILD_DIR = build_axi_tests
+LOGS_DIR = logs_axi_tests
+
+# VCS compilation flags
+VCS_FLAGS = -sverilog \
+            -full64 \
+            -timescale=1ns/1ps \
+            -debug_access+all \
+            -lca \
+            -LDFLAGS -Wl,--no-as-needed
+
+# Include directories
+VCS_FLAGS += +incdir+$(AXI_DIR)/include
+VCS_FLAGS += +incdir+$(AXI_DIR)/include/axi
+VCS_FLAGS += +incdir+$(COMMON_DIR)/include
+VCS_FLAGS += +incdir+$(COMMON_DIR)/include/common_cells
+
+# Available tests (24 testbenches from deps/axi/test/)
+TESTS = axi_addr_test \
+        axi_atop_filter \
+        axi_bus_compare \
+        axi_cdc \
+        axi_delayer \
+        axi_dw_downsizer \
+        axi_dw_upsizer \
+        axi_fifo \
+        axi_isolate \
+        axi_iw_converter \
+        axi_lite_dw_converter \
+        axi_lite_mailbox \
+        axi_lite_regs \
+        axi_lite_to_apb \
+        axi_lite_to_axi \
+        axi_lite_xbar \
+        axi_modify_address \
+        axi_serializer \
+        axi_sim_mem \
+        axi_slave_compare \
+        axi_to_axi_lite \
+        axi_to_mem_banked \
+        axi_xbar
+
+# Test parameter (set with TEST=...)
+TEST ?= axi_to_axi_lite
+
+# ============================================================================
+# Common source files needed by most tests
+# ============================================================================
+COMMON_SOURCES = \
+    $(COMMON_DIR)/src/cf_math_pkg.sv \
+    $(COMMON_DIR)/src/lzc.sv \
+    $(COMMON_DIR)/src/rr_arb_tree.sv \
+    $(COMMON_DIR)/src/onehot_to_bin.sv \
+    $(COMMON_DIR)/src/lfsr_8bit.sv \
+    $(COMMON_DIR)/src/lfsr.sv \
+    $(COMMON_DIR)/src/spill_register.sv \
+    $(COMMON_DIR)/src/fall_through_register.sv \
+    $(COMMON_DIR)/src/stream_register.sv \
+    $(COMMON_DIR)/src/stream_fifo.sv \
+    $(COMMON_DIR)/src/fifo_v3.sv \
+    $(COMMON_DIR)/src/stream_arbiter_flushable.sv \
+    $(COMMON_DIR)/src/stream_arbiter.sv \
+    $(COMMON_DIR)/src/addr_decode_dync.sv \
+    $(COMMON_DIR)/src/addr_decode.sv \
+    $(COMMON_DIR)/src/stream_delay.sv \
+    $(COMMON_DIR)/src/delta_counter.sv \
+    $(COMMON_DIR)/src/counter.sv \
+    $(COMMON_DIR)/src/id_queue.sv \
+    $(COMMON_DIR)/src/stream_fork.sv \
+    $(COMMON_DIR)/src/stream_join.sv \
+    $(COMMON_DIR)/src/stream_demux.sv \
+    $(COMMON_DIR)/src/stream_mux.sv
+
+LOCAL_SOURCES = \
+    ../deps/common_verification/src/rand_id_queue.sv \
+    ../deps/common_verification/src/clk_rst_gen.sv
+
+# AXI sources - Compile in correct order
+# 1. Package first (axi_pkg.sv)
+# 2. Interfaces (axi_intf.sv)  
+# 3. Test infrastructure (axi_test.sv)
+# 4. All other modules (alphabetically)
+AXI_PKG = $(AXI_DIR)/src/axi_pkg.sv
+AXI_INTF = $(AXI_DIR)/src/axi_intf.sv
+AXI_TEST = $(AXI_DIR)/src/axi_test.sv
+AXI_OTHER = $(filter-out $(AXI_PKG) $(AXI_INTF) $(AXI_TEST), $(wildcard $(AXI_DIR)/src/*.sv))
+
+AXI_SOURCES = $(AXI_PKG) $(AXI_INTF) $(AXI_TEST) $(AXI_OTHER)
+
+# ============================================================================
+# Targets
+# ============================================================================
+
+.PHONY: help list test compile run clean
+
+help:
+	@echo "============================================================================"
+	@echo "AXI Repository Tests Runner (VCS)"
+	@echo "============================================================================"
+	@echo ""
+	@echo "Targets:"
+	@echo "  make -f Makefile.axi_tests list                    # List all available tests"
+	@echo "  make -f Makefile.axi_tests test TEST=<name>        # Compile and run specific test"
+	@echo "  make -f Makefile.axi_tests compile TEST=<name>     # Compile only"
+	@echo "  make -f Makefile.axi_tests run TEST=<name>         # Run only (after compile)"
+	@echo "  make -f Makefile.axi_tests clean                   # Clean build artifacts"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make -f Makefile.axi_tests test TEST=axi_to_axi_lite"
+	@echo "  make -f Makefile.axi_tests test TEST=axi_lite_to_apb"
+	@echo "  make -f Makefile.axi_tests test TEST=axi_fifo"
+	@echo ""
+	@echo "Note: Some tests may require additional source files not included here."
+	@echo "      If compilation fails, check the test file for required modules."
+	@echo ""
+
+list:
+	@echo "Available Tests (24 testbenches):"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@for test in $(TESTS); do \
+		echo "  - $$test"; \
+	done
+	@echo ""
+	@echo "Usage: make -f Makefile.axi_tests test TEST=<test_name>"
+	@echo ""
+
+# Validate test name
+validate:
+	@if ! echo "$(TESTS)" | grep -w "$(TEST)" > /dev/null; then \
+		echo "❌ Error: Unknown test '$(TEST)'"; \
+		echo ""; \
+		echo "Available tests:"; \
+		for test in $(TESTS); do echo "  - $$test"; done; \
+		echo ""; \
+		exit 1; \
+	fi
+
+# Compile test
+compile: validate $(BUILD_DIR)
+	@echo "============================================"
+	@echo "Compiling Test: $(TEST)"
+	@echo "============================================"
+	@echo "Note: This uses a generic source list."
+	@echo "Some tests may need additional files."
+	@echo ""
+	$(VCS) $(VCS_FLAGS) \
+		-top tb_$(TEST) \
+		$(COMMON_SOURCES) \
+		$(LOCAL_SOURCES) \
+		$(AXI_SOURCES) \
+		$(TEST_DIR)/tb_$(TEST).sv \
+		-o $(BUILD_DIR)/$(SIMV)_$(TEST) 2>&1 | tee compile_$(TEST).log
+	@echo ""
+	@if grep -E "^Error|Error-\[" compile_$(TEST).log > /dev/null; then \
+		echo "❌ Compilation FAILED for $(TEST)"; \
+		echo "   Check compile_$(TEST).log for details"; \
+		echo ""; \
+		echo "💡 Tip: This test may need additional source files."; \
+		echo "   Check $(TEST_DIR)/tb_$(TEST).sv for required modules."; \
+		exit 1; \
+	else \
+		echo "✅ Compilation successful for $(TEST)"; \
+	fi
+
+# Run test
+run: $(LOGS_DIR)
+	@if [ ! -f $(BUILD_DIR)/$(SIMV)_$(TEST) ]; then \
+		echo "❌ Error: Executable not found. Run 'make compile TEST=$(TEST)' first"; \
+		exit 1; \
+	fi
+	@echo "============================================"
+	@echo "Running Test: $(TEST)"
+	@echo "============================================"
+	@echo "run" > $(BUILD_DIR)/run.tcl
+	@echo "quit" >> $(BUILD_DIR)/run.tcl
+	cd $(BUILD_DIR) && ./$(SIMV)_$(TEST) -ucli -i run.tcl | tee ../$(LOGS_DIR)/sim_$(TEST).log
+	@rm -f $(BUILD_DIR)/run.tcl
+	@echo ""
+	@echo "✅ Simulation complete for $(TEST)"
+	@echo "   Log: $(LOGS_DIR)/sim_$(TEST).log"
+
+# Compile and run
+test: compile run
+	@echo ""
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@echo "✅ Test $(TEST) completed successfully!"
+	@echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Clean
+clean:
+	@echo "Cleaning AXI test artifacts..."
+	rm -rf $(BUILD_DIR)
+	rm -rf $(LOGS_DIR)
+	rm -f *.log
+	rm -f ucli.key vc_hdrs.h
+	@echo "✅ Clean complete"
+
+# Create directories
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+
+$(LOGS_DIR):
+	@mkdir -p $(LOGS_DIR)
