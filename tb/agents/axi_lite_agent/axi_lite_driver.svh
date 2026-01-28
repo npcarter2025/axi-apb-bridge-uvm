@@ -81,7 +81,7 @@ class axi_lite_driver extends uvm_driver#(axi_lite_transaction);
 
         @(vif.master_cb);
         while (!vif.master_cb.bvalid)
-            @(vif.master_cb)
+            @(vif.master_cb);
         
         tr.bresp = vif.master_cb.bresp;
 
@@ -94,7 +94,7 @@ class axi_lite_driver extends uvm_driver#(axi_lite_transaction);
 
         // STEP 1: Drive Read Address Channel
 
-        repeat(cfg.default_ready_delay) @(vif.master_cb)
+        repeat(cfg.default_ready_delay) @(vif.master_cb);
         
         vif.master_cb.araddr <= tr.addr;
         vif.master_cb.arprot <= tr.prot;
@@ -102,16 +102,16 @@ class axi_lite_driver extends uvm_driver#(axi_lite_transaction);
 
         @(vif.master_cb);
         while (!vif.master_cb.arready)
-            @(vif.master_cb)
+            @(vif.master_cb);
 
-        vif.master_cb.ar_valid <= 1'b0;
+        vif.master_cb.arvalid <= 1'b0;
 
         //Step 2: Wait for Read Data Response
         vif.master_cb.rready <= 1'b1;
 
         @(vif.master_cb);
-        while (!vif.master_cb.rvalid);
-            @(vif.master_cb)
+        while (!vif.master_cb.rvalid)
+            @(vif.master_cb);
         
         tr.rdata = vif.master_cb.rdata;
         tr.rresp = vif.master_cb.rresp;

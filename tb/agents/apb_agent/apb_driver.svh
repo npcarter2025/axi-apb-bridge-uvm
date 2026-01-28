@@ -52,6 +52,29 @@ class apb_driver extends uvm_driver#(apb_transaction);
         @(vif.slave_cb);
 
 
+        // TODO: Check if we're in ACCESS phase (psel && penable)
+        // TODO: Apply ready delay based on config
+        // TODO: Set pready = 1
+        // TODO: If read, set prdata
+        // TODO: Set pslverr based on config (error injection)
+        
+        if (vif.slave_cb.psel && vif.slave_cb.penable) begin
+            repeat(cfg.default_ready_delay) @(vif.slave_cb);
+
+
+            vif.slave_cb.pready <= 1'b1;
+
+            if (!vif.slave_cb.pwrite) begin
+                vif.slave_cb.prdata <= 32'hDEADBEEF; //Placeholder
+            end
+            
+            
+            vif.slave_cb.pslverr <= cfg.should_inject_error();
+
+            @(vif.slave_cb);
+            vif.slave_cb.pready <= 1'b0;
+        end
+
     endtask
 
 
