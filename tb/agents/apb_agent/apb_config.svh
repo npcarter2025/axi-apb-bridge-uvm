@@ -14,7 +14,7 @@ class apb_config extends uvm_object;
     // ============================================
     
     // Agent mode
-    uvm_active_passive_enum is_active = UVM_PASSIVE;  // Usually monitor for bridge
+    uvm_active_passive_enum is_active = UVM_ACTIVE;  // Usually monitor for bridge
     
     // Master or Slave mode
     typedef enum {MASTER, SLAVE} agent_mode_e;
