@@ -34,6 +34,13 @@ class apb_transaction extends uvm_sequence_item;
     // Filled by driver/monitor after slave responds
     bit [APB_DATA_WIDTH-1:0] prdata;       // Read data (only for READ)
     bit                      pslverr;      // Slave error response
+    
+    // ============================================
+    // DRIVER CONTROL FIELDS
+    // ============================================
+    // Used by slave sequences to control driver behavior
+    int unsigned             response_delay; // Cycles to delay before asserting pready
+    bit                      pwrite;         // Write enable (derived from access_type)
 
     // ============================================
     // CONSTRAINTS
@@ -60,6 +67,8 @@ class apb_transaction extends uvm_sequence_item;
             pwdata = 32'h0;  // Clear unused write fields for reads
             pstrb  = 4'h0;
         end
+        // Update pwrite based on access_type
+        pwrite = (access_type == WRITE);
     endfunction
 
     // ============================================
@@ -73,6 +82,8 @@ class apb_transaction extends uvm_sequence_item;
         `uvm_field_int(pstrb,   UVM_ALL_ON | UVM_HEX)
         `uvm_field_int(prdata,  UVM_ALL_ON | UVM_HEX)
         `uvm_field_int(pslverr, UVM_ALL_ON)
+        `uvm_field_int(response_delay, UVM_ALL_ON | UVM_DEC)
+        `uvm_field_int(pwrite,  UVM_ALL_ON)
     `uvm_object_utils_end
 
     // ============================================
