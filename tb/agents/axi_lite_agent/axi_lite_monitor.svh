@@ -5,6 +5,7 @@ class axi_lite_monitor extends uvm_monitor;
     `uvm_component_utils(axi_lite_monitor)
 
     virtual axi_lite_if.monitor vif;
+    virtual axi_lite_if vif_tmp;
 
     axi_lite_config cfg;
 
@@ -17,8 +18,9 @@ class axi_lite_monitor extends uvm_monitor;
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
 
-        if (!uvm_config_db#(virtual axi_lite_if)::get(this, "", "vif", vif))
+        if (!uvm_config_db#(virtual axi_lite_if)::get(this, "", "vif", vif_tmp))
             `uvm_fatal(get_type_name(), "Couldn't retrieve virtual interface from config_db")
+        vif = vif_tmp;
 
         if (!uvm_config_db#(axi_lite_config)::get(this, "", "config", cfg))
             `uvm_fatal(get_type_name(), "Couldn't find axi_lite_config in config_db")
@@ -91,7 +93,7 @@ class axi_lite_monitor extends uvm_monitor;
         
         // STEP 4: Create transaction and fill all fields
         tr = axi_lite_transaction::type_id::create("tr");
-        tr.access_type = WRITE;
+        tr.access_type = axi_lite_transaction::WRITE;
         tr.addr = addr;
         tr.prot = prot;
         tr.wdata = wdata;
@@ -167,7 +169,7 @@ class axi_lite_monitor extends uvm_monitor;
         
         // STEP 3: Create transaction and fill all fields
         tr = axi_lite_transaction::type_id::create("tr");
-        tr.access_type = READ;
+        tr.access_type = axi_lite_transaction::READ;
         tr.addr = addr;
         tr.prot = prot;
         tr.rdata = rdata;

@@ -74,7 +74,7 @@ class apb_slave_seq extends apb_slave_base_seq;
                                         txn.paddr, txn.prdata, delay),
                               UVM_HIGH)
                 end else begin
-                    txn.prdata = 32'hDEAD_BEEF;  // Error pattern
+                    txn.prdata = 32'hDEADBEEF;  // Error pattern
                     `uvm_info(get_type_name(),
                               $sformatf("READ ERROR: addr=0x%08h (injected)", txn.paddr),
                               UVM_MEDIUM)

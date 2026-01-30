@@ -46,9 +46,9 @@ package apb_pkg;
     `include "apb_agent.svh"
     
     // 8. Sequences (depend on transaction, sequencer)
-    `include "sequences/apb_error_seq.sv"
-    `include "sequences/apb_master_seq.sv"
-    `include "sequences/apb_slave_seq.sv"
+    `include "sequences/apb_slave_base_seq.svh"
+    `include "sequences/apb_slave_seq.svh"
+    `include "sequences/apb_slave_error_seq.svh"
 
 
 endpackage : apb_pkg

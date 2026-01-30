@@ -167,14 +167,17 @@ interface axi_lite_if #(
     modport master (
         clocking master_cb,
         input clk,
-        input rst_n
+        input rst_n,
+        import wait_reset_done,
+        import reset_master_signals
     );
     
     // Monitor modport (for AXI-Lite Monitor)
     modport monitor (
         clocking monitor_cb,
         input clk,
-        input rst_n
+        input rst_n,
+        import wait_reset_done
     );
     
     // Slave modport (for AXI-Lite Slave/Responder - if needed)

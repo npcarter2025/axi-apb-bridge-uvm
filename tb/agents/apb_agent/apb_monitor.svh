@@ -4,7 +4,8 @@
 class apb_monitor extends uvm_monitor;
     `uvm_component_utils(apb_monitor);
 
-    virtual apb_if.monitor_cb vif;
+    virtual apb_if.monitor vif;
+    virtual apb_if vif_tmp;
 
     apb_config cfg;
 
@@ -17,8 +18,9 @@ class apb_monitor extends uvm_monitor;
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
 
-        if (!uvm_config_db#(virtual apb_if)::get(this, "", "vif", vif))
+        if (!uvm_config_db#(virtual apb_if)::get(this, "", "vif", vif_tmp))
             `uvm_fatal(get_type_name(), "Couldn't find virtual interface in config_db")
+        vif = vif_tmp;
         
         if (!uvm_config_db#(apb_config)::get(this, "", "config", cfg))
             `uvm_fatal(get_type_name(), "Couldn't find apb_config in config_db")
@@ -65,7 +67,7 @@ class apb_monitor extends uvm_monitor;
 
         tr.paddr = vif.monitor_cb.paddr;
         tr.pprot = vif.monitor_cb.pprot;
-        tr.access_type = vif.monitor_cb.pwrite ? WRITE : READ;
+        tr.access_type = vif.monitor_cb.pwrite ? apb_transaction::WRITE : apb_transaction::READ;
 
         if (tr.is_write()) begin 
             tr.pwdata = vif.monitor_cb.pwdata;

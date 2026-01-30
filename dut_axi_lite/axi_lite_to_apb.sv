@@ -381,6 +381,10 @@ module axi_lite_to_apb #(
   // pragma translate_on
 endmodule
 
+// ============================================================================
+// INTERFACE-BASED MODULE COMMENTED OUT FOR UVM TESTBENCH
+// ============================================================================
+/*
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
 
@@ -496,3 +500,5 @@ module axi_lite_to_apb_intf #(
     .addr_map_i
   );
 endmodule
+*/
+// ============================================================================

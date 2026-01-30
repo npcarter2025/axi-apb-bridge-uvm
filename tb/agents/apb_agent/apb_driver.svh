@@ -6,6 +6,7 @@ class apb_driver extends uvm_driver#(apb_transaction);
     `uvm_component_utils(apb_driver)
 
     virtual apb_if.slave vif;
+    virtual apb_if vif_tmp;
 
     apb_config cfg;
 
@@ -16,9 +17,9 @@ class apb_driver extends uvm_driver#(apb_transaction);
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
 
-
-        if(!uvm_config_db#(virtual apb_if)::get(this, "", "vif", vif))
+        if(!uvm_config_db#(virtual apb_if)::get(this, "", "vif", vif_tmp))
             `uvm_fatal(get_type_name(), "Virtual interface couldn't be found in config_db")
+        vif = vif_tmp;
         
         if(!uvm_config_db#(apb_config)::get(this, "", "config", cfg))
             `uvm_fatal(get_type_name(), "apb Config object not found in config_db")

@@ -35,8 +35,8 @@ class apb_config extends uvm_object;
     int unsigned error_probability = 0;    // % chance of pslverr=1
     
     // Address range (for slave mode)
-    bit [31:0] start_addr = 32'h0000_0000;
-    bit [31:0] end_addr   = 32'hFFFF_FFFF;
+    bit [31:0] start_addr = 32'h00000000;
+    bit [31:0] end_addr   = 32'hFFFFFFFF;
     
     // ============================================
     // UVM AUTOMATION

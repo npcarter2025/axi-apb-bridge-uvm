@@ -1,0 +1,144 @@
+# ============================================================================
+# UVM Makefile for AXI-Lite to APB Bridge Verification
+# ============================================================================
+
+# Tool settings
+VCS = vcs
+SIMV = ./simv_uvm
+
+# Test selection
+TEST ?= axi_lite_to_apb_sanity_test
+
+# VCS compilation flags for UVM
+VCS_FLAGS = -sverilog \
+            -full64 \
+            -timescale=1ns/1ps \
+            -debug_access+all \
+            -kdb \
+            -lca \
+            -ntb_opts uvm-1.2 \
+            -LDFLAGS -Wl,--no-as-needed \
+            +lint=TFIPC-L
+
+# Include directories
+INCDIRS = \
+    +incdir+../deps/axi/include \
+    +incdir+../deps/axi/include/axi \
+    +incdir+../deps/common_cells/include \
+    +incdir+../deps/common_cells/include/common_cells \
+    +incdir+../tb/agents/axi_lite_agent \
+    +incdir+../tb/agents/apb_agent \
+    +incdir+../tb/env/axi_lite_to_apb_env \
+    +incdir+../tb/tests \
+    +incdir+../tb/common
+
+# Source files - Dependencies
+DEP_SOURCES = \
+    ../deps/common_cells/src/cf_math_pkg.sv \
+    ../deps/common_cells/src/lzc.sv \
+    ../deps/common_cells/src/rr_arb_tree.sv \
+    ../deps/common_cells/src/onehot_to_bin.sv \
+    ../deps/common_cells/src/lfsr_8bit.sv \
+    ../deps/common_cells/src/lfsr.sv \
+    ../deps/common_cells/src/spill_register.sv \
+    ../deps/common_cells/src/fifo_v3.sv \
+    ../deps/common_cells/src/fall_through_register.sv \
+    ../deps/common_cells/src/stream_register.sv \
+    ../deps/common_cells/src/addr_decode_dync.sv \
+    ../deps/common_cells/src/addr_decode.sv \
+    ../deps/axi/src/axi_pkg.sv \
+    ../deps/axi/src/axi_intf.sv
+
+# DUT source (using dut_axi_lite with interface module commented out)
+DUT_SOURCES = \
+    ../dut_axi_lite/axi_lite_to_apb.sv
+
+# Testbench sources - Interfaces (outside packages)
+TB_INTERFACES = \
+    ../tb/agents/axi_lite_agent/axi_lite_if.sv \
+    ../tb/agents/apb_agent/apb_if.sv
+
+# Testbench sources - Packages  
+TB_PACKAGES = \
+    ../tb/agents/axi_lite_agent/axi_lite_pkg.sv \
+    ../tb/agents/apb_agent/apb_pkg.sv \
+    ../tb/env/axi_lite_to_apb_env/axi_lite_to_apb_env_pkg.sv \
+    ../tb/common/tb_pkg.sv
+
+# Top-level testbench
+TB_TOP = ../tb/top/tb_axi_lite_to_apb_top.sv
+
+# ============================================================================
+# Targets
+# ============================================================================
+
+.PHONY: all compile run clean help
+
+all: compile
+
+# Compile
+compile:
+	@echo "================================================================"
+	@echo " Compiling UVM Testbench"
+	@echo "================================================================"
+	$(VCS) $(VCS_FLAGS) $(INCDIRS) \
+		$(DEP_SOURCES) \
+		$(DUT_SOURCES) \
+		$(TB_INTERFACES) \
+		$(TB_PACKAGES) \
+		$(TB_TOP) \
+		-o simv_uvm
+	@echo "================================================================"
+	@echo " Compilation Complete!"
+	@echo "================================================================"
+
+# Run simulation
+run:
+	@echo "================================================================"
+	@echo " Running Test: $(TEST)"
+	@echo "================================================================"
+	$(SIMV) +UVM_TESTNAME=$(TEST) +UVM_VERBOSITY=UVM_LOW
+	@echo "================================================================"
+	@echo " Simulation Complete!"
+	@echo "================================================================"
+
+# Run with GUI
+gui:
+	@echo "================================================================"
+	@echo " Running Test with GUI: $(TEST)"
+	@echo "================================================================"
+	$(SIMV) +UVM_TESTNAME=$(TEST) +UVM_VERBOSITY=UVM_MEDIUM -gui
+	
+# Run with waveform dump
+wave:
+	@echo "================================================================"
+	@echo " Running Test with Waveforms: $(TEST)"
+	@echo "================================================================"
+	$(SIMV) +UVM_TESTNAME=$(TEST) +UVM_VERBOSITY=UVM_LOW +DUMP
+
+# Clean
+clean:
+	rm -rf simv_uvm* csrc *.log AN.DB *.vcd *.vpd ucli.key vc_hdrs.h DVEfiles
+	@echo "Cleaned build artifacts"
+
+# Help
+help:
+	@echo "================================================================"
+	@echo " UVM Makefile Help"
+	@echo "================================================================"
+	@echo " Targets:"
+	@echo "   make compile              - Compile the testbench"
+	@echo "   make run TEST=<name>      - Run a test"
+	@echo "   make gui TEST=<name>      - Run with GUI"
+	@echo "   make wave TEST=<name>     - Run with waveform dump"
+	@echo "   make clean                - Clean build artifacts"
+	@echo ""
+	@echo " Available Tests:"
+	@echo "   axi_lite_to_apb_sanity_test  - Simple directed test"
+	@echo "   axi_lite_to_apb_random_test  - Random transaction test"
+	@echo ""
+	@echo " Examples:"
+	@echo "   make compile"
+	@echo "   make run TEST=axi_lite_to_apb_sanity_test"
+	@echo "   make wave TEST=axi_lite_to_apb_random_test"
+	@echo "================================================================"

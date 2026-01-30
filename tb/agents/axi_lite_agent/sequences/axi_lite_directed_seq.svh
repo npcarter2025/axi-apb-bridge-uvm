@@ -14,28 +14,28 @@ class axi_lite_directed_seq extends axi_lite_base_seq;
 
         // Write to address 0x0
         `uvm_do_with(req, {
-            req.access_type == WRITE;
-            req.addr == 32'h0000_0000;
-            req.wdata == 32'hDEAD_BEEF;
+            req.access_type == axi_lite_transaction::WRITE;
+            req.addr == 32'h00000000;
+            req.wdata == 32'hDEADBEEF;
         })
 
         // Read back from address 0x0
         `uvm_do_with(req, {
-            req.access_type == READ;
-            req.addr == 32'h0000_0000;
+            req.access_type == axi_lite_transaction::READ;
+            req.addr == 32'h00000000;
         })
 
         // Write to address 0x100
         `uvm_do_with(req, {
-            req.access_type == WRITE;
-            req.addr == 32'h0000_0100;
-            req.wdata == 32'hCAFE_BABE;
+            req.access_type == axi_lite_transaction::WRITE;
+            req.addr == 32'h00000100;
+            req.wdata == 32'hCAFEBABE;
         })
 
         // Read back from address 0x100
         `uvm_do_with(req, {
-            req.access_type == READ;
-            req.addr == 32'h0000_0100;
+            req.access_type == axi_lite_transaction::READ;
+            req.addr == 32'h00000100;
         })
     endtask
 

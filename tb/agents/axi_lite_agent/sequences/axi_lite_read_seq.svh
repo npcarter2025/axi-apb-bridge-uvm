@@ -15,7 +15,7 @@ class axi_lite_read_seq extends axi_lite_base_seq;
 
         repeat(num_transactions) begin
             `uvm_do_with(req, {
-                req.access_type == READ;
+                req.access_type == axi_lite_transaction::READ;
                 req.addr inside {[start_addr:end_addr]};
             })
         end

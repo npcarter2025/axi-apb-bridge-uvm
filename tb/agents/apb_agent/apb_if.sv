@@ -109,21 +109,26 @@ interface apb_if #(
     modport master (
         clocking master_cb,
         input clk,
-        input rst_n
+        input rst_n,
+        import wait_reset_done,
+        import reset_master_signals
     );
     
     // Monitor modport (for APB Monitor)
     modport monitor (
         clocking monitor_cb,
         input clk,
-        input rst_n
+        input rst_n,
+        import wait_reset_done
     );
     
     // Slave modport (for APB Slave/Responder)
     modport slave (
         clocking slave_cb,
         input clk,
-        input rst_n
+        input rst_n,
+        import wait_reset_done,
+        import reset_slave_signals
     );
     
     // DUT modport (for reference - shows DUT's perspective)

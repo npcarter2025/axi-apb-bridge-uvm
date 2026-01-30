@@ -29,8 +29,8 @@ class axi_lite_config extends uvm_object;
     int unsigned max_outstanding_transactions = 1;  // For pipelining (future)
     
     // Address range (for slave mode - future use)
-    bit [31:0] start_addr = 32'h0000_0000;
-    bit [31:0] end_addr   = 32'hFFFF_FFFF;
+    bit [31:0] start_addr = 32'h00000000;
+    bit [31:0] end_addr   = 32'hFFFFFFFF;
     
     // ============================================
     // UVM AUTOMATION

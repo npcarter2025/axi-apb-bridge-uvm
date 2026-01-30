@@ -5,6 +5,7 @@ class axi_lite_driver extends uvm_driver#(axi_lite_transaction);
     `uvm_component_utils(axi_lite_driver)
 
     virtual axi_lite_if.master vif;
+    virtual axi_lite_if vif_tmp;
 
     axi_lite_config cfg;
 
@@ -16,9 +17,9 @@ class axi_lite_driver extends uvm_driver#(axi_lite_transaction);
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
     
-
-        if (!uvm_config_db#(virtual axi_lite_if)::get(this, "", "vif", vif))
+        if (!uvm_config_db#(virtual axi_lite_if)::get(this, "", "vif", vif_tmp))
             `uvm_fatal(get_type_name(), "Virtual Interface not found in config_db")
+        vif = vif_tmp;
 
         if (!uvm_config_db#(axi_lite_config)::get(this, "", "config", cfg))
             `uvm_fatal(get_type_name(), "Config object not found in config_db")

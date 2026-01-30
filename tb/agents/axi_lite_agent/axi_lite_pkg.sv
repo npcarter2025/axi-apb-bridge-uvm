@@ -47,9 +47,9 @@ package axi_lite_pkg;
     
     // 8. Sequences (depend on transaction, sequencer)
     `include "sequences/axi_lite_base_seq.svh"
-    `include "sequences/axi_lite_random_seq.svh"
     `include "sequences/axi_lite_write_seq.svh"
     `include "sequences/axi_lite_read_seq.svh"
-    `include "sequences/axi_lite_write_read_seq.svh"
+    `include "sequences/axi_lite_random_seq.svh"
+    `include "sequences/axi_lite_directed_seq.svh"
 
 endpackage : axi_lite_pkg

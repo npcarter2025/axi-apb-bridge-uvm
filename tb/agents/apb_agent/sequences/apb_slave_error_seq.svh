@@ -74,7 +74,7 @@ class apb_slave_error_seq extends apb_slave_base_seq;
                                         txn.paddr, txn.prdata),
                               UVM_HIGH)
                 end else begin
-                    txn.prdata = 32'hBAD0_DATA;  // Error pattern
+                    txn.prdata = 32'hBADBAD00;  // Error pattern
                     `uvm_warning(get_type_name(),
                                  $sformatf("READ ERROR INJECTED: addr=0x%08h", 
                                            txn.paddr))

@@ -15,7 +15,7 @@ class axi_lite_write_seq extends axi_lite_base_seq;
 
         repeat(num_transactions) begin
             `uvm_do_with(req, {
-                req.access_type == WRITE;
+                req.access_type == axi_lite_transaction::WRITE;
                 req.addr inside {[start_addr:end_addr]};
             })
         end
