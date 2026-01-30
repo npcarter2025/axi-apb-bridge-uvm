@@ -11,6 +11,10 @@ class apb_agent extends uvm_agent;
 
     uvm_analysis_port #(apb_transaction) ap;
 
+    function new(string name = "apb_agent", uvm_component parent = null);
+        super.new(name, parent);
+    endfunction
+
     function void build_phase(uvm_phase phase);
         super.build_phase(phase);
 
