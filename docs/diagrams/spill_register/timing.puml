@@ -139,12 +139,12 @@ highlight 275 to 300 #C8E6C9 : A Drains
 
 legend bottom
     <b>Key Observations:</b>
-    • Minimum 1 cycle latency: Data A enters cycle 1, appears cycle 2
-    • Two-register buffering: Can hold 2 items (cycles 3-4)
-    • Backpressure at cycle 4: ready_o=0 when both registers full
-    • Data priority: B drains before A (older data first)
-    • All paths registered: No combinational paths
-    • Sustained throughput: Can accept new data while draining old
+    - Minimum 1 cycle latency: Data A enters cycle 1, appears cycle 2
+    - Two-register buffering: Can hold 2 items (cycles 3-4)
+    - Backpressure at cycle 4: ready_o=0 when both registers full
+    - Data priority: B drains before A (older data first)
+    - All paths registered: No combinational paths
+    - Sustained throughput: Can accept new data while draining old
     
     <b>Compare to Fall-Through Register:</b>
     Fall-through can have zero latency, but spill register always ≥1 cycle

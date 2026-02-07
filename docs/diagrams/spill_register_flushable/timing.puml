@@ -30,55 +30,50 @@ a_full is 0
 b_full is 0
 state is "EMPTY"
 
-' Cycle 1: Data A enters
-@100
+@25
 clk is 1
-@200
+@50
 clk is 0
 
-' Cycle 2: A full, B gets data, C enters A
-@300
+@75
 clk is 1
-@320
+@80
 a_full is 1
 valid_o is 1
 data_o is "A"
 state is "A_ONLY"
-@350
+@87
 data_i is "B"
-@400
+@100
 clk is 0
 
-' Cycle 3: Both full
-@500
+@125
 clk is 1
-@520
+@130
 b_full is 1
 a_full is 1
 data_o is "A"
 state is "BOTH_FULL"
 ready_o is 0
-@550
+@137
 data_i is "C"
-@600
+@150
 clk is 0
 
-note bottom of state : Both registers full\nBackpressure active (ready_o=0)
+note bottom of state : Both full
 
-' Cycle 4: Flush triggered!
-@700
+@175
 clk is 1
-@720
+@180
 flush_i is 1
-@800
+@200
 clk is 0
 
-note bottom of state : Flush signal asserted!
+note bottom of state : Flush!
 
-' Cycle 5: Registers cleared
-@900
+@225
 clk is 1
-@920
+@230
 flush_i is 0
 a_full is 0
 b_full is 0
@@ -86,68 +81,65 @@ valid_o is 0
 data_o is "-"
 ready_o is 1
 state is "EMPTY"
-@950
+@237
 valid_i is 1
 data_i is "D"
 
-@1000
+@250
 clk is 0
 
-note bottom of state : Flush complete: Both registers cleared\nready_o=1, valid_o=0
+note bottom of state : Cleared
 
-' Cycle 6: New data D enters
-@1100
+@275
 clk is 1
-@1200
+@300
 clk is 0
 
-' Cycle 7: D visible
-@1300
+@325
 clk is 1
-@1320
+@330
 a_full is 1
 valid_o is 1
 data_o is "D"
 state is "A_ONLY"
-@1350
+@337
 ready_i is 1
-@1400
+@350
 clk is 0
 
-note bottom of state : Normal operation resumed\nData D at output
+note bottom of state : Resumed
 
-' Cycle 8: D consumed
-@1500
+@375
 clk is 1
-@1520
+@380
 a_full is 0
 valid_o is 0
 data_o is "-"
 state is "EMPTY"
-@1550
+@387
 valid_i is 0
-@1600
+@400
 clk is 0
 
-@1700
+@425
 
-highlight 100 to 600 #C8E6C9 : Normal Fill Operation
-highlight 700 to 800 #FF6B6B : Flush Triggered
-highlight 900 to 1000 #E1F5FE : Registers Cleared
-highlight 1100 to 1600 #E8F5E9 : Normal Operation Resumed
+highlight 25 to 150 #C8E6C9 : Normal Fill
+highlight 175 to 200 #FF6B6B : Flush
+highlight 225 to 250 #E1F5FE : Cleared
+highlight 275 to 400 #E8F5E9 : Resumed
 
 legend bottom
     <b>Flush Operation:</b>
-    • Cycle 4: flush_i asserted while both registers full
-    • Cycle 5: Both a_full_q and b_full_q cleared to 0
-    • Pipeline emptied immediately
-    • ready_o goes high, valid_o goes low
-    • New data can be accepted starting cycle 6
+    - Cycle 4: flush_i asserted while both registers full
+    - Cycle 5: Both a_full_q and b_full_q cleared to 0
+    - Pipeline emptied immediately
+    - ready_o goes high, valid_o goes low
+    - New data can be accepted starting cycle 6
     
     <b>Critical Timing:</b>
-    • Flush takes effect on next rising clock edge
-    • a_drain and b_drain both forced to 1 by flush_i
-    • a_fill and b_fill blocked while flush_i=1
+    - Flush takes effect on next rising clock edge
+    - a_drain and b_drain both forced to 1 by flush_i
+    - a_fill and b_fill blocked while flush_i=1
     
     <b>Assertion:</b>
     flush_i and valid_i must NOT be high simultaneously

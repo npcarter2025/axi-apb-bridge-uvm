@@ -130,12 +130,12 @@ highlight 1100 to 1200 #C8E6C9 : Fall-Through Again
 
 legend bottom
     <b>Key Observations:</b>
-    • Cycles 1-2: Zero-latency operation (data passes through same cycle)
-    • Cycle 3: Downstream stalls, data buffered
-    • Cycle 4: Backpressure applied (ready_o=0)
-    • Cycle 5: FIFO drains when downstream ready
-    • ready_o is registered (timing isolation on back-pressure)
-    • valid_o and data_o are combinational (can change within cycle)
+    - Cycles 1-2: Zero-latency operation (data passes through same cycle)
+    - Cycle 3: Downstream stalls, data buffered
+    - Cycle 4: Backpressure applied (ready_o=0)
+    - Cycle 5: FIFO drains when downstream ready
+    - ready_o is registered (timing isolation on back-pressure)
+    - valid_o and data_o are combinational (can change within cycle)
 end legend
 
 @enduml
