@@ -1,0 +1,170 @@
+@startuml spill_register_timing
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Spill Register Timing Diagram\nShowing Always-Present Latency and Two-Register Buffering
+
+concise "clk_i" as clk
+robust "valid_i" as valid_i
+robust "ready_i" as ready_i
+robust "data_i" as data_i
+concise "ready_o" as ready_o
+robust "valid_o" as valid_o
+robust "data_o" as data_o
+robust "a_full_q" as a_full
+robust "b_full_q" as b_full
+robust "a_data_q" as a_data
+robust "b_data_q" as b_data
+robust "State" as state
+
+@0
+clk is 0
+valid_i is 0
+ready_i is 1
+data_i is "-"
+ready_o is 1
+valid_o is 0
+data_o is "-"
+a_full is 0
+b_full is 0
+a_data is "-"
+b_data is "-"
+state is "EMPTY"
+
+' Cycle 1: First data arrives
+@100
+clk is 1
+@150
+valid_i is 1
+data_i is "A"
+
+@200
+clk is 0
+note bottom of state : Data A enters: Captured into Register A
+
+' Cycle 2: A is full, data appears at output (minimum 1 cycle latency)
+@300
+clk is 1
+@320
+a_full is 1
+a_data is "A"
+valid_o is 1
+data_o is "A"
+state is "A_ONLY"
+@350
+data_i is "B"
+
+@400
+clk is 0
+note bottom of state : 1 Cycle Latency: Data A now visible\nNew data B arrives
+
+' Cycle 3: Downstream stalls, A drains to B
+@500
+clk is 1
+@520
+ready_i is 0
+@550
+data_i is "C"
+b_full is 1
+b_data is "A"
+a_data is "B"
+data_o is "A"
+state is "BOTH_FULL"
+
+@600
+clk is 0
+note bottom of state : Both Full: B←A, A←C\nBackpressure coming
+
+' Cycle 4: Cannot accept more data
+@700
+clk is 1
+@720
+ready_o is 0
+@750
+data_i is "D"
+data_o is "A"
+
+@800
+clk is 0
+note bottom of state : Backpressure: ready_o=0\nData D rejected
+
+' Cycle 5: Downstream ready, B drains
+@900
+clk is 1
+@920
+ready_i is 1
+@950
+b_full is 0
+data_o is "B"
+ready_o is 1
+state is "A_ONLY"
+
+@1000
+clk is 0
+note bottom of state : B Drains: A consumed\nShowing B, ready_o=1
+
+' Cycle 6: A drains, accept new data D
+@1100
+clk is 1
+@1120
+valid_i is 1
+data_i is "D"
+@1150
+a_data is "D"
+data_o is "C"
+
+@1200
+clk is 0
+note bottom of state : A Drains: B consumed\nShowing C, D enters A
+
+' Cycle 7: D visible
+@1300
+clk is 1
+@1350
+data_o is "D"
+
+@1400
+clk is 0
+note bottom of state : Output D: C consumed
+
+' Cycle 8: valid_i drops
+@1500
+clk is 1
+@1520
+valid_i is 0
+data_i is "-"
+
+@1600
+clk is 0
+
+' Cycle 9: Back to empty
+@1700
+clk is 1
+@1720
+a_full is 0
+a_data is "-"
+valid_o is 0
+data_o is "-"
+state is "EMPTY"
+
+@1800
+clk is 0
+note bottom of state : Empty: All data consumed
+
+@1900
+
+legend bottom
+    <b>Key Observations:</b>
+    • Minimum 1 cycle latency: Data A enters cycle 1, appears cycle 2
+    • Two-register buffering: Can hold 2 items (cycles 3-4)
+    • Backpressure at cycle 4: ready_o=0 when both registers full
+    • Data priority: B drains before A (older data first)
+    • All paths registered: No combinational paths
+    • Sustained throughput: Can accept new data while draining old
+    
+    <b>Compare to Fall-Through Register:</b>
+    Fall-through can have zero latency, but spill register always ≥1 cycle
+end legend
+
+@enduml

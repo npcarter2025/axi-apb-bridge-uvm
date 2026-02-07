@@ -1,0 +1,135 @@
+@startuml fall_through_register_timing
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Fall-Through Register Timing Diagram\nShowing Zero-Latency and Buffering Behavior
+
+concise "clk_i" as clk
+robust "valid_i" as valid_i
+robust "ready_i" as ready_i
+robust "data_i" as data_i
+concise "ready_o" as ready_o
+robust "valid_o" as valid_o
+robust "data_o" as data_o
+robust "fifo_empty" as empty
+robust "fifo_full" as full
+robust "Behavior" as behavior
+
+@0
+clk is 0
+valid_i is 0
+ready_i is 1
+data_i is "-"
+ready_o is 1
+valid_o is 0
+data_o is "-"
+empty is 1
+full is 0
+behavior is "IDLE/EMPTY"
+
+' Cycle 1: Fall-through scenario (downstream ready)
+@100
+clk is 1
+@150
+valid_i is 1
+data_i is "A"
+valid_o is 1
+data_o is "A"
+behavior is "FALL-THROUGH"
+
+note bottom of behavior : Zero Latency: Data A passes through immediately\nbecause FIFO is empty and ready_i=1
+
+@200
+clk is 0
+
+' Cycle 2: Continue fall-through
+@300
+clk is 1
+@350
+data_i is "B"
+data_o is "B"
+
+@400
+clk is 0
+
+' Cycle 3: Downstream stalls - buffer fills
+@500
+clk is 1
+@550
+ready_i is 0
+data_i is "C"
+data_o is "C"
+ready_o is 0
+empty is 0
+full is 1
+behavior is "BUFFERING"
+
+note bottom of behavior : Data C stored: Downstream not ready,\ndata buffered in FIFO, ready_o drops
+
+@600
+clk is 0
+
+' Cycle 4: FIFO full, cannot accept new data
+@700
+clk is 1
+@750
+data_i is "D"
+valid_o is 1
+data_o is "C"
+
+note bottom of behavior : Backpressure: FIFO full, ready_o=0\nData D rejected, output still shows C
+
+@800
+clk is 0
+
+' Cycle 5: Downstream becomes ready, drain FIFO
+@900
+clk is 1
+@950
+ready_i is 1
+data_o is "D"
+ready_o is 1
+empty is 1
+full is 0
+behavior is "DRAINING"
+
+note bottom of behavior : FIFO drains: C consumed, D now falls through
+
+@1000
+clk is 0
+
+' Cycle 6: Back to normal fall-through
+@1100
+clk is 1
+@1150
+data_i is "E"
+data_o is "E"
+behavior is "FALL-THROUGH"
+
+@1200
+clk is 0
+
+' Cycle 7: valid_i drops
+@1300
+clk is 1
+@1350
+valid_i is 0
+valid_o is 0
+data_i is "-"
+data_o is "-"
+behavior is "IDLE"
+
+@1400
+
+legend bottom
+    <b>Key Observations:</b>
+    • Cycles 1-2: Zero-latency operation (data passes through same cycle)
+    • Cycle 3: Downstream stalls, data buffered
+    • Cycle 4: Backpressure applied (ready_o=0)
+    • Cycle 5: FIFO drains when downstream ready
+    • ready_o is registered (timing isolation on back-pressure)
+    • valid_o and data_o are combinational (can change within cycle)
+end legend
+
+@enduml

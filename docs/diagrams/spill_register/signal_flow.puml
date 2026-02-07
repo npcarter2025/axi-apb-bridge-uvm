@@ -1,0 +1,174 @@
+@startuml spill_register_signal_flow
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+
+title Spill Register Signal Flow Diagram\n(Two-Register Pipeline with Full Isolation)
+
+participant "Upstream\nMaster" as UP
+box "Spill Register" #E3F2FD
+    participant "Input\nInterface" as INPUT
+    participant "Register A\n(Slice)" as REG_A
+    participant "Register B\n(Spill)" as REG_B
+    participant "Control\nLogic" as CTRL
+    participant "Output\nMux" as MUX
+    participant "Output\nInterface" as OUTPUT
+end box
+participant "Downstream\nSlave" as DOWN
+
+== First Data Item (Minimum 1-Cycle Latency) ==
+
+UP -> INPUT : valid_i=1, data_i=A
+activate INPUT
+
+INPUT -> CTRL : Check a_full_q & b_full_q
+CTRL -> CTRL : a_full=0, b_full=0\nready_o=1
+CTRL -> INPUT : ready_o=1
+
+INPUT -> REG_A : a_fill=1\nCapture data A
+activate REG_A
+
+note over INPUT, REG_A
+    <b>Cycle 0:</b> Data A enters Register A
+end note
+
+deactivate INPUT
+
+== Next Clock Cycle (Data Available at Output) ==
+
+REG_A -> REG_A : a_data_q = A\na_full_q = 1
+REG_A -> CTRL : a_full_q=1
+CTRL -> MUX : Select a_data_q\n(b_full_q=0)
+CTRL -> OUTPUT : valid_o=1
+
+REG_A -> MUX : a_data_q=A
+activate MUX
+MUX -> OUTPUT : data_o=A
+activate OUTPUT
+
+note over REG_A, OUTPUT
+    <b>Cycle 1:</b> Data A visible at output
+    (Minimum 1 cycle latency)
+end note
+
+DOWN -> OUTPUT : ready_i=1
+OUTPUT -> CTRL : ready_i=1
+CTRL -> REG_A : a_drain=1
+
+OUTPUT -> DOWN : valid_o=1, data_o=A
+
+deactivate MUX
+deactivate OUTPUT
+deactivate REG_A
+
+== Downstream Stalls - Use Register B ==
+
+UP -> INPUT : valid_i=1, data_i=B
+activate INPUT
+INPUT -> REG_A : a_fill=1, data_i=B
+activate REG_A
+
+DOWN -> OUTPUT : ready_i=0 (stalled)
+activate OUTPUT
+
+note over INPUT, REG_A
+    <b>Cycle 2:</b> Data B enters Register A
+    Downstream not ready
+end note
+
+deactivate INPUT
+
+== Next Cycle - A Drains to B ==
+
+REG_A -> REG_A : a_data_q=B, a_full_q=1
+REG_A -> CTRL : a_full_q=1, ready_i=0
+
+CTRL -> CTRL : b_fill = a_drain & !ready_i\n= 1 & 1 = 1
+
+REG_A -> REG_B : A drains to B\nb_data_q = A (old data)
+activate REG_B
+REG_B -> REG_B : b_full_q = 1
+
+CTRL -> OUTPUT : valid_o=1\n(b_full_q=1)
+CTRL -> MUX : Select b_data_q
+
+REG_B -> MUX : b_data_q=A
+activate MUX
+MUX -> OUTPUT : data_o=A (unchanged)
+
+note over REG_A, REG_B
+    <b>Cycle 3:</b> A has new data B
+    B holds old data A for output
+    Both registers full
+end note
+
+== New Data Rejected (Backpressure) ==
+
+UP -> INPUT : valid_i=1, data_i=C
+activate INPUT
+
+CTRL -> CTRL : a_full=1, b_full=1\nready_o=0
+CTRL -> INPUT : ready_o=0
+
+INPUT -> INPUT : Cannot accept C\n(ready_o=0)
+
+note over INPUT
+    <b>Cycle 4:</b> Data C rejected
+    Both registers full
+end note
+
+deactivate INPUT
+
+== Downstream Ready - B Drains ==
+
+DOWN -> OUTPUT : ready_i=1 (ready)
+OUTPUT -> CTRL : ready_i=1
+
+CTRL -> CTRL : b_drain = b_full_q & ready_i\n= 1 & 1 = 1
+
+REG_B -> REG_B : b_drain=1\nb_full_q = 0
+deactivate REG_B
+
+CTRL -> MUX : Select a_data_q\n(b_full_q=0 now)
+deactivate MUX
+
+REG_A -> MUX : a_data_q=B
+activate MUX
+MUX -> OUTPUT : data_o=B
+
+OUTPUT -> DOWN : valid_o=1, data_o=B
+
+CTRL -> CTRL : ready_o=1\n(B is empty now)
+
+note over REG_A, OUTPUT
+    <b>Cycle 5:</b> Data A consumed
+    Output now shows B from Register A
+    Ready to accept new data
+end note
+
+deactivate MUX
+deactivate OUTPUT
+deactivate REG_A
+
+legend right
+    <b>Combinational Path Analysis:</b>
+    
+    <b>1. Data Path: ✓ FULLY CUT</b>
+       data_i → [Reg A] → [Reg B/Mux] → data_o
+       Minimum 1 register, up to 2 registers
+    
+    <b>2. Valid Path: ✓ FULLY CUT</b>
+       valid_i → [a_full_q | b_full_q] → valid_o
+       Registered through full flags
+    
+    <b>3. Ready Path: ✓ FULLY CUT</b>
+       ready_i → [Logic] → [state] → ready_o
+       Registered through register state
+    
+    <b>Complete Isolation:</b>
+    No combinational paths between
+    input and output on any signal!
+end legend
+
+@enduml

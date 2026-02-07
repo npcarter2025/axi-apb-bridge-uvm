@@ -1,0 +1,106 @@
+@startuml spill_register_architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+title Spill Register Architecture\n(Full Combinational Path Isolation - Always Has Latency)
+
+rectangle "Spill Register (Flushable)" {
+    rectangle "Input Interface" #E3F2FD {
+        component [valid_i] as valid_i
+        component [data_i] as data_i
+        component [ready_o] as ready_o
+        component [flush_i] as flush_i
+    }
+
+    rectangle "Register A (Slice Register)" #FFF3E0 {
+        component [a_data_q] as a_data
+        component [a_full_q] as a_full
+        note right of a_data
+            Primary data entry
+            Captures input when a_fill=1
+        end note
+    }
+
+    rectangle "Register B (Spill Register)" #FFEBEE {
+        component [b_data_q] as b_data
+        component [b_full_q] as b_full
+        note right of b_data
+            Secondary buffer
+            Receives from A when b_fill=1
+        end note
+    }
+
+    rectangle "Control Logic" #F3E5F5 {
+        component [Fill/Drain\nControl] as ctrl
+        component [a_fill = valid_i & ready_o & !flush_i] as a_fill
+        component [a_drain = (a_full_q & !b_full_q) | flush_i] as a_drain
+        component [b_fill = a_drain & !ready_i & !flush_i] as b_fill
+        component [b_drain = (b_full_q & ready_i) | flush_i] as b_drain
+    }
+
+    rectangle "Output Multiplexer" #E8F5E9 {
+        component [Data Select:\ndata_o = b_full_q ?\nb_data_q : a_data_q] as mux
+        note right of mux
+            Prioritizes B over A
+            (older data first)
+        end note
+    }
+
+    rectangle "Output Interface" #E1F5FE {
+        component [valid_o] as valid_o
+        component [data_o] as data_o
+        component [ready_i] as ready_i
+    }
+}
+
+' Connections
+valid_i --> a_fill
+data_i --> a_data : Clocked by a_fill
+a_fill --> a_data
+a_drain --> a_full
+
+a_data --> b_data : Clocked by b_fill
+a_data --> mux
+a_full --> ctrl
+a_full --> ready_o : ready_o = !a_full_q | !b_full_q
+
+b_fill --> b_data
+b_drain --> b_full
+b_data --> mux
+b_full --> ctrl
+b_full --> valid_o : valid_o = a_full_q | b_full_q
+b_full --> mux : Select signal
+
+mux --> data_o
+ready_i --> b_drain
+flush_i --> a_drain
+flush_i --> b_drain
+
+note bottom
+    <b>Key Features:</b>
+    • Two-register design provides buffering for 2 data items
+    • Always adds ≥1 cycle latency (no bypass path)
+    • Complete combinational path isolation on all signals
+    • Register A can be filled and drained simultaneously
+    • Register B provides overflow capacity when A is full
+    • Optional flush capability clears both registers
+end note
+
+legend right
+    <b>Timing Isolation:</b>
+    ✓ Ready path: Cut (registered)
+    ✓ Valid path: Cut (registered)
+    ✓ Data path: Cut (registered)
+    
+    <b>Use Case:</b>
+    Complete timing closure
+    Break critical paths
+    
+    <b>Bypass Mode:</b>
+    Parameter Bypass=1 makes
+    register transparent
+end legend
+
+@enduml

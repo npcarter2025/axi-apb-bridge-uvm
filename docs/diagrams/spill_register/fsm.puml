@@ -1,0 +1,121 @@
+@startuml spill_register_fsm
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Spill Register State Machine\n(4 States Based on Register A and B Occupancy)
+
+[*] --> EMPTY : Reset
+
+state "EMPTY\n(Both Empty)" as EMPTY #E8F5E9 {
+    EMPTY : a_full_q = 0
+    EMPTY : b_full_q = 0
+    EMPTY : ready_o = 1
+    EMPTY : valid_o = 0
+    EMPTY : 
+    EMPTY : Can accept input
+    EMPTY : No output available
+}
+
+state "A_ONLY\n(Only A Full)" as A_ONLY #FFF3E0 {
+    A_ONLY : a_full_q = 1
+    A_ONLY : b_full_q = 0
+    A_ONLY : ready_o = 1
+    A_ONLY : valid_o = 1
+    A_ONLY : data_o = a_data_q
+    A_ONLY : 
+    A_ONLY : Can still accept input
+    A_ONLY : Output from A
+}
+
+state "B_ONLY\n(Only B Full)" as B_ONLY #FFEBEE {
+    B_ONLY : a_full_q = 0
+    B_ONLY : b_full_q = 1
+    B_ONLY : ready_o = 1
+    B_ONLY : valid_o = 1
+    B_ONLY : data_o = b_data_q
+    B_ONLY : 
+    B_ONLY : Can accept input
+    B_ONLY : Output from B
+}
+
+state "BOTH_FULL\n(Both Full)" as BOTH #FFCDD2 {
+    BOTH : a_full_q = 1
+    BOTH : b_full_q = 1
+    BOTH : ready_o = 0
+    BOTH : valid_o = 1
+    BOTH : data_o = b_data_q
+    BOTH : 
+    BOTH : Cannot accept input
+    BOTH : Backpressure active
+}
+
+' Transitions from EMPTY
+EMPTY --> A_ONLY : valid_i=1 & ready_i=0\n[Fill A, output not ready]
+EMPTY --> EMPTY : valid_i=1 & ready_i=1\n[Fill A, drain A immediately]
+EMPTY --> EMPTY : valid_i=0\n[Idle]
+
+' Transitions from A_ONLY
+A_ONLY --> BOTH : valid_i=1 & ready_i=0\n[A drains to B, new data to A]
+A_ONLY --> A_ONLY : valid_i=1 & ready_i=1\n[A consumed, new data to A]
+A_ONLY --> EMPTY : valid_i=0 & ready_i=1\n[A consumed, no new input]
+A_ONLY --> B_ONLY : valid_i=0 & ready_i=0\n[A moves to B, no new input]
+
+' Transitions from B_ONLY
+B_ONLY --> BOTH : valid_i=1 & ready_i=0\n[Fill A while B is full]
+B_ONLY --> A_ONLY : valid_i=1 & ready_i=1\n[B consumed, new data to A]
+B_ONLY --> EMPTY : valid_i=0 & ready_i=1\n[B consumed, no new input]
+B_ONLY --> B_ONLY : valid_i=0 & ready_i=0\n[B waiting to drain]
+
+' Transitions from BOTH_FULL
+BOTH --> A_ONLY : valid_i=0 & ready_i=1\n[B consumed, A remains]
+BOTH --> B_ONLY : valid_i=1 & ready_i=1\n[B consumed, new data to A via drain/fill]
+BOTH --> BOTH : ready_i=0\n[Both remain full]
+
+note right of EMPTY
+    <b>EMPTY State:</b>
+    Both registers available
+    Maximum throughput
+    If valid_i & ready_i:
+      Data passes through
+      (still has 1 cycle latency)
+end note
+
+note right of A_ONLY
+    <b>A_ONLY State:</b>
+    Most common state
+    One data item in pipeline
+    Can accept new input
+    B available for overflow
+end note
+
+note right of B_ONLY
+    <b>B_ONLY State:</b>
+    A is empty, B has data
+    Occurs after A drains to B
+    Output prioritizes B
+    (older data first)
+end note
+
+note right of BOTH
+    <b>BOTH_FULL State:</b>
+    Pipeline is full (2 items)
+    Backpressure applied
+    Must wait for ready_i
+    Output still from B
+end note
+
+legend bottom
+    <b>State Transitions:</b>
+    • Filling: controlled by valid_i & ready_o
+    • Draining: controlled by ready_i & valid_o
+    • Data moves A → B when A full & B empty & !ready_i
+    • B drains before A (priority to older data)
+    
+    <b>Key Insight:</b>
+    Two registers create 4 states, allowing
+    pipeline to maintain throughput even
+    under backpressure
+end legend
+
+@enduml

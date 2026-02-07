@@ -1,0 +1,63 @@
+@startuml fall_through_register_fsm
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Fall-Through Register State Machine\n(Based on FIFO Empty/Full Status)
+
+[*] --> EMPTY : Reset
+
+state "EMPTY" as EMPTY #E8F5E9 {
+    EMPTY : fifo_empty = 1
+    EMPTY : fifo_full = 0
+    EMPTY : ready_o = 1
+    EMPTY : valid_o = 0
+    EMPTY : <b>Data can fall through</b>
+}
+
+state "FULL" as FULL #FFCDD2 {
+    FULL : fifo_empty = 0
+    FULL : fifo_full = 1
+    FULL : ready_o = 0
+    FULL : valid_o = 1
+    FULL : <b>Backpressure active</b>
+}
+
+EMPTY --> FULL : valid_i=1 & ready_i=0\n[Push without pop]
+FULL --> EMPTY : ready_i=1 & valid_i=0\n[Pop without push]
+EMPTY --> EMPTY : valid_i=1 & ready_i=1\n[Fall-through:\nsimultaneous push & pop]
+EMPTY --> EMPTY : valid_i=0\n[Idle]
+FULL --> FULL : ready_i=0 & valid_i=1\n[Downstream stalled]
+FULL --> FULL : ready_i=0 & valid_i=0\n[Waiting for downstream]
+
+note right of EMPTY
+    <b>EMPTY State:</b>
+    • Input immediately ready
+    • No valid output yet
+    • If both valid_i & ready_i high:
+      → Data bypasses FIFO
+      → Zero latency!
+    • If valid_i & !ready_i:
+      → Data stored in FIFO
+      → Transition to FULL
+end note
+
+note right of FULL
+    <b>FULL State:</b>
+    • Input blocked (ready_o=0)
+    • Valid output available
+    • Cannot accept new data
+    • Waiting for ready_i to drain
+    • One data item buffered
+end note
+
+note bottom
+    <b>Key Insight:</b>
+    Only 2 states needed because FIFO depth = 1
+    
+    With FALL_THROUGH mode:
+    • EMPTY → Data bypasses register
+    • FULL → Data held in register
+end note
+
+@enduml

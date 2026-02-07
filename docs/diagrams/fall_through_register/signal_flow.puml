@@ -1,0 +1,111 @@
+@startuml fall_through_register_signal_flow
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+
+title Fall-Through Register Signal Flow Diagram
+
+participant "Upstream\nMaster" as UP
+box "Fall-Through Register" #E3F2FD
+    participant "Input\nInterface" as INPUT
+    participant "FIFO_v3\n(FALL_THROUGH=1\nDEPTH=1)" as FIFO
+    participant "Control\nLogic" as CTRL
+    participant "Output\nInterface" as OUTPUT
+end box
+participant "Downstream\nSlave" as DOWN
+
+== Zero-Latency Fall-Through Scenario ==
+
+UP -> INPUT : valid_i=1, data_i=A
+activate INPUT
+
+INPUT -> CTRL : Check fifo_empty
+CTRL -> CTRL : fifo_empty=1\nfifo_full=0
+CTRL -> INPUT : ready_o=1
+
+INPUT -> FIFO : push_i = valid_i & ~fifo_full\n= 1 & 1 = 1
+
+DOWN -> OUTPUT : ready_i=1
+activate OUTPUT
+OUTPUT -> CTRL : Check fifo_empty
+CTRL -> OUTPUT : fifo_empty=1 (still)
+
+OUTPUT -> FIFO : pop_i = ready_i & ~fifo_empty\n= 1 & 1 = 1
+
+FIFO -> FIFO : <b>Fall-Through:</b>\npush and pop same cycle\nData A bypasses storage
+FIFO -> OUTPUT : data_o = A
+OUTPUT -> DOWN : valid_o=1, data_o=A
+deactivate OUTPUT
+
+note over UP, DOWN
+    <b>Zero Latency:</b> Data A passed from input to output
+    in the same clock cycle because FIFO was empty
+    and downstream was ready
+end note
+
+deactivate INPUT
+
+== Buffering Scenario (Downstream Not Ready) ==
+
+UP -> INPUT : valid_i=1, data_i=B
+activate INPUT
+
+INPUT -> CTRL : Check fifo status
+CTRL -> INPUT : ready_o=1 (still empty)
+
+DOWN -> OUTPUT : ready_i=0 (stalled)
+activate OUTPUT
+
+INPUT -> FIFO : push_i=1, data_i=B
+FIFO -> FIFO : Store B in buffer\nfifo_empty=0\nfifo_full=1
+
+CTRL -> CTRL : Update status
+CTRL -> INPUT : ready_o=0 (now full)
+CTRL -> OUTPUT : valid_o=1 (has data)
+OUTPUT -> OUTPUT : Cannot pop (ready_i=0)
+
+deactivate INPUT
+
+note over UP, DOWN
+    <b>Buffered:</b> Data B stored in FIFO because
+    downstream was not ready. Backpressure applied
+    to upstream (ready_o=0)
+end note
+
+== FIFO Drainage ==
+
+DOWN -> OUTPUT : ready_i=1 (ready again)
+OUTPUT -> FIFO : pop_i = ready_i & ~fifo_empty\n= 1 & 1 = 1
+
+FIFO -> FIFO : Read B from buffer\nfifo_empty=1\nfifo_full=0
+FIFO -> OUTPUT : data_o=B
+OUTPUT -> DOWN : valid_o=1, data_o=B
+
+CTRL -> CTRL : Update status
+CTRL -> INPUT : ready_o=1 (empty again)
+
+deactivate OUTPUT
+
+note over UP, DOWN
+    <b>Drained:</b> FIFO emptied, data B delivered
+    to downstream. Ready to accept new data.
+end note
+
+legend right
+    <b>Path Analysis:</b>
+    
+    <b>Ready Path (Cut):</b>
+    ready_i → [FIFO state] → ready_o
+    ✓ Registered through FIFO state
+    
+    <b>Valid Path (NOT Cut):</b>
+    valid_i → fifo_empty → valid_o
+    ✗ Combinational (same cycle)
+    
+    <b>Data Path (NOT Cut):</b>
+    data_i → [MUX in FIFO] → data_o
+    ✗ Combinational when empty
+end legend
+
+@enduml

@@ -1,0 +1,72 @@
+@startuml fall_through_register_architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+title Fall-Through Register Architecture\n(Zero-Latency when Downstream Ready)
+
+rectangle "Fall-Through Register" {
+    rectangle "Input Interface" #E3F2FD {
+        component [valid_i] as valid_i
+        component [data_i] as data_i
+        component [ready_o] as ready_o
+    }
+
+    rectangle "FIFO_v3 Core" #E8F5E9 {
+        component [FIFO Storage\n(DEPTH=1)] as fifo_storage
+        component [FALL_THROUGH\nLogic] as ft_logic
+        note right of fifo_storage
+            Single entry buffer
+            Can bypass when empty
+        end note
+    }
+
+    rectangle "Control Logic" #F3E5F5 {
+        component [fifo_full] as full
+        component [fifo_empty] as empty
+        component [Push Control:\npush_i = valid_i & ~fifo_full] as push_ctrl
+        component [Pop Control:\npop_i = ready_i & ~fifo_empty] as pop_ctrl
+    }
+
+    rectangle "Output Interface" #FFF3E0 {
+        component [valid_o] as valid_o
+        component [data_o] as data_o
+        component [ready_i] as ready_i
+    }
+}
+
+' Connections
+valid_i --> push_ctrl
+data_i --> fifo_storage : data (when push)
+full --> ready_o : ready_o = ~fifo_full
+full --> push_ctrl
+
+push_ctrl --> fifo_storage
+fifo_storage --> ft_logic
+ft_logic --> data_o : Fall-through or buffered
+empty --> valid_o : valid_o = ~fifo_empty
+ready_i --> pop_ctrl
+empty --> pop_ctrl
+pop_ctrl --> fifo_storage
+
+note bottom
+    <b>Key Behavior:</b>
+    • When FIFO empty + valid_i + ready_i → Zero latency (data falls through)
+    • When FIFO full or downstream not ready → Buffers 1 data item
+    • Cuts combinational path on ready signal only
+    • valid and data paths can be combinational
+end note
+
+legend right
+    <b>Timing Isolation:</b>
+    ✓ Ready path: Cut (registered)
+    ✗ Valid path: NOT cut
+    ✗ Data path: NOT cut
+    
+    <b>Use Case:</b>
+    Back-pressure isolation
+    with minimal latency
+end legend
+
+@enduml
