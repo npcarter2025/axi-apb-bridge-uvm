@@ -26,73 +26,78 @@ gnt_o is "0000"
 rr_q is 0
 priority is "Input 0"
 
-@100
+@25
 clk is 1
-@120
+@30
 req_i is "0111"
-@150
+@37
 req_o is 1
 idx_o is 0
 data_o is "A"
 gnt_i is 1
+@45
+gnt_o is "0001"
+
+@50
+clk is 0
+
+note bottom of priority : Priority 0 wins
+
+@75
+clk is 1
+@80
+rr_q is 1
+priority is "Input 1"
+@87
+idx_o is 1
+data_o is "B"
+@95
+gnt_o is "0010"
+
+@100
+clk is 0
+
+note bottom of priority : Priority 1 wins
+
+@125
+clk is 1
+@130
+req_i is "0101"
+rr_q is 2
+priority is "Input 2"
+@137
+idx_o is 2
+data_o is "C"
+@145
+gnt_o is "0100"
+
+@150
+clk is 0
+
+note bottom of priority : Priority 2 wins
+
+@175
+clk is 1
 @180
+rr_q is 0
+priority is "Input 0"
+@187
+idx_o is 0
+data_o is "A"
+@195
 gnt_o is "0001"
 
 @200
 clk is 0
 
-note bottom of priority : Req 0,1,2 active\nPriority=0, Input 0 wins
+note bottom of priority : Wrapped to 0
 
-@300
-clk is 1
-@320
-rr_q is 1
-priority is "Input 1"
-@350
-idx_o is 1
-data_o is "B"
-@380
-gnt_o is "0010"
+@225
 
-@400
-clk is 0
-
-note bottom of priority : Priority rotated to 1\nInput 1 wins
-
-@500
-clk is 1
-@520
-req_i is "0101"
-rr_q is 2
-priority is "Input 2"
-@550
-idx_o is 2
-data_o is "C"
-@580
-gnt_o is "0100"
-
-@600
-clk is 0
-
-note bottom of priority : Priority=2\nInput 2 wins
-
-@700
-clk is 1
-@720
-rr_q is 0
-priority is "Input 0"
-@750
-idx_o is 0
-data_o is "A"
-@780
-gnt_o is "0001"
-
-@800
-clk is 0
-
-note bottom of priority : Priority wrapped to 0
-
-@900
+highlight 25 to 50 #C8E6C9 : Priority 0
+highlight 75 to 100 #E1F5FE : Priority 1
+highlight 125 to 150 #FFE0B2 : Priority 2
+highlight 175 to 200 #E8F5E9 : Priority 0
 
 legend bottom
     Priority rotates after each grant
