@@ -85,12 +85,12 @@ RD_RESP --> R : axi_rresp
 
 note bottom
     <b>Key Features:</b>
-    • Converts AXI4-Lite to APB4 protocol
-    • Round-robin arbitration between R/W
-    • Optional request/response pipelines
-    • Multi-slave APB support
-    • Decode error handling
-    • Address alignment per APB spec
+    - Converts AXI4-Lite to APB4 protocol
+    - Round-robin arbitration between R/W
+    - Optional request/response pipelines
+    - Multi-slave APB support
+    - Decode error handling
+    - Address alignment per APB spec
 end note
 
 legend right
@@ -101,9 +101,9 @@ legend right
     PipelineResponse
     
     <b>Error Handling:</b>
-    Decode error → DECERR
-    APB pslverr → SLVERR
-    Zero strobe → OKAY
+    Decode error -> DECERR
+    APB pslverr -> SLVERR
+    Zero strobe -> OKAY
 end legend
 
 @enduml

@@ -51,7 +51,7 @@ FSM -> APB_S : <b>Setup Phase</b>\npsel[idx]=1\npenable=0\npwrite=0\npaddr (alig
 deactivate REQ_PIPE
 
 activate APB_S
-FSM -> FSM : State → Access
+FSM -> FSM : State -> Access
 
 FSM -> APB_S : <b>Access Phase</b>\npsel[idx]=1\npenable=1\npwrite=0\npaddr stable
 
@@ -62,7 +62,7 @@ FSM -> FSM : Capture response:\ndata=prdata\nresp=(pslverr ?\n  SLVERR : OKAY)
 deactivate APB_S
 
 FSM -> RESP_PIPE : apb_rresp.data\napb_rresp.resp\napb_rresp_valid=1
-FSM -> FSM : State → Setup\napb_req_ready=1
+FSM -> FSM : State -> Setup\napb_req_ready=1
 deactivate FSM
 
 activate RESP_PIPE
@@ -107,7 +107,7 @@ alt Valid Write Transaction
     deactivate REQ_PIPE
     
     activate APB_S
-    FSM -> FSM : State → Access
+    FSM -> FSM : State -> Access
     
     FSM -> APB_S : <b>Access Phase</b>\npsel[idx]=1\npenable=1\npwrite=1\nall signals stable
     
@@ -133,7 +133,7 @@ else Zero Strobe Write (!|strb)
 
 end
 
-FSM -> FSM : State → Setup\napb_req_ready=1
+FSM -> FSM : State -> Setup\napb_req_ready=1
 deactivate FSM
 
 activate RESP_PIPE
@@ -146,11 +146,11 @@ deactivate AXI_IF
 
 note over AXI_M, APB_S
     <b>Key Timing Characteristics:</b>
-    • AXI write requires both AW and W valid simultaneously
-    • Arbiter can handle concurrent AR and AW requests
-    • APB always requires 2 cycles minimum (Setup + Access)
-    • Back-pressure via pipeline ready signals
-    • Single outstanding APB transaction at a time
+    - AXI write requires both AW and W valid simultaneously
+    - Arbiter can handle concurrent AR and AW requests
+    - APB always requires 2 cycles minimum (Setup + Access)
+    - Back-pressure via pipeline ready signals
+    - Single outstanding APB transaction at a time
 end note
 
 @enduml
