@@ -1,0 +1,104 @@
+@startuml axi_lite_to_apb_fsm
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title APB Master FSM State Diagram
+
+state "Setup / Idle" as Setup #E8F5E9 {
+    Setup : <b>State: Setup (1'b0)</b>
+    Setup : ---
+    Setup : <b>Conditions Checked:</b>
+    Setup : • apb_req_valid
+    Setup : • apb_wresp_ready
+    Setup : • apb_rresp_ready
+    Setup : • apb_dec_valid (address decoded)
+    Setup : • Write: |apb_req.strb (strobe not zero)
+    Setup : • Read: always proceed
+    Setup : ---
+    Setup : <b>Actions:</b>
+    Setup : • Generate PSEL = 1, PENABLE = 0
+    Setup : • Set paddr (aligned), pprot, pwrite
+    Setup : • Set pwdata, pstrb (if write)
+    Setup : • Align address per APB spec
+}
+
+state "Access" as Access #FFF3E0 {
+    Access : <b>State: Access (1'b1)</b>
+    Access : ---
+    Access : <b>Conditions Checked:</b>
+    Access : • apb_resp_i[apb_sel_idx].pready
+    Access : ---
+    Access : <b>Actions:</b>
+    Access : • Maintain PSEL = 1, PENABLE = 1
+    Access : • Keep all request signals stable
+    Access : • Wait for PREADY assertion
+    Access : • Capture response when PREADY
+}
+
+state "Decode Error\nHandling" as DecErr #FFCDD2 {
+    DecErr : <b>Condition:</b>
+    DecErr : • !apb_dec_valid OR
+    DecErr : • Write with zero strobe
+    DecErr : ---
+    DecErr : <b>Actions:</b>
+    DecErr : • No APB transaction
+    DecErr : • Pop request (apb_req_ready = 1)
+    DecErr : • Generate AXI error response:
+    DecErr :   - Write: RESP_DECERR (if |strb)
+    DecErr :   - Write: RESP_OKAY (if !|strb)
+    DecErr :   - Read: RESP_DECERR
+    DecErr : • Return to Setup
+}
+
+[*] --> Setup : rst_ni
+
+Setup --> Access : <b>Valid Transaction</b>\napb_req_valid &\napb_dec_valid &\nresponse_spill_ready &\n(write → |strb) &\n(!write → always)
+
+Setup --> DecErr : <b>Decode Error</b>\napb_req_valid &\n(!apb_dec_valid |\n(write & !|strb))
+
+DecErr --> Setup : <b>Error Handled</b>\nResponse generated\nRequest popped
+
+Access --> Setup : <b>Transfer Complete</b>\napb_resp_i[idx].pready\nResponse captured\nRequest popped
+
+Setup --> Setup : <b>Wait for Valid Request</b>\n!apb_req_valid |\n!wresp_ready |\n!rresp_ready
+
+Access --> Access : <b>Wait for PREADY</b>\n!apb_resp_i[idx].pready
+
+note right of Setup
+    <b>APB Setup Phase:</b>
+    First cycle of APB transaction.
+    PSEL asserted, PENABLE low.
+    Address and control signals driven.
+end note
+
+note right of Access
+    <b>APB Access Phase:</b>
+    Second cycle of APB transaction.
+    PENABLE asserted, wait for PREADY.
+    All signals must remain stable.
+end note
+
+note bottom
+    <b>Response Generation:</b>
+    
+    <b>Write Response (B channel):</b>
+    • APB pslverr → AXI RESP_SLVERR
+    • APB !pslverr → AXI RESP_OKAY
+    • Decode error → AXI RESP_DECERR
+    • Zero strobe write → AXI RESP_OKAY (bypass)
+    
+    <b>Read Response (R channel):</b>
+    • APB prdata → AXI rdata
+    • APB pslverr → AXI RESP_SLVERR
+    • APB !pslverr → AXI RESP_OKAY
+    • Decode error → AXI RESP_DECERR, data=0xDEA110C8
+    
+    <b>Key Points:</b>
+    • FSM handles one transaction at a time
+    • Back-pressure via response spill register readiness
+    • Address alignment per APB spec (2.1.1)
+    • apb_sel_idx selects target slave from decoder
+end note
+
+@enduml

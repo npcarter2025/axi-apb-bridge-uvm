@@ -1,0 +1,121 @@
+@startuml axi_lite_to_apb_timing
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title AXI4-Lite to APB4 Bridge - Detailed Timing Waveforms
+
+clock "clk" as CLK with period 20
+
+binary "ar_valid" as AR_VALID
+binary "ar_ready" as AR_READY
+binary "r_valid" as R_VALID
+concise "APB State" as STATE
+binary "psel" as PSEL
+binary "penable" as PENABLE
+binary "pwrite" as PWRITE
+binary "pready" as PREADY
+
+@0
+AR_VALID is low
+AR_READY is low
+R_VALID is low
+STATE is Setup
+PSEL is low
+PENABLE is low
+PWRITE is low
+PREADY is low
+
+' Read transaction starts
+@10
+AR_VALID is high
+
+@20
+AR_READY is high
+AR_VALID is high
+
+@30
+AR_VALID is low
+AR_READY is low
+STATE is Setup
+PSEL is high
+PENABLE is low
+PWRITE is low
+
+@40
+STATE is Access
+PSEL is high
+PENABLE is high
+
+@50
+PREADY is high
+
+@60
+STATE is Setup
+PSEL is low
+PENABLE is low
+PREADY is low
+R_VALID is high
+
+@70
+R_VALID is low
+
+@80
+
+@90
+' Write transaction starts
+binary "aw_valid" as AW_VALID
+binary "w_valid" as W_VALID
+binary "aw_ready" as AW_READY
+binary "w_ready" as W_READY
+binary "b_valid" as B_VALID
+
+@90
+AW_VALID is low
+W_VALID is low
+AW_READY is low
+W_READY is low
+B_VALID is low
+
+@100
+AW_VALID is high
+W_VALID is high
+
+@110
+AW_READY is high
+W_READY is high
+
+@120
+AW_VALID is low
+W_VALID is low
+AW_READY is low
+W_READY is low
+STATE is Setup
+PSEL is high
+PENABLE is low
+PWRITE is high
+
+@130
+STATE is Access
+PENABLE is high
+
+@140
+PREADY is high
+
+@150
+STATE is Setup
+PSEL is low
+PENABLE is low
+PREADY is low
+PWRITE is low
+B_VALID is high
+
+@160
+B_VALID is low
+
+@160 <-> @180 : Idle
+
+highlight 10 to 70 #lightgreen : Read Transaction
+highlight 100 to 160 #lightblue : Write Transaction
+
+@enduml

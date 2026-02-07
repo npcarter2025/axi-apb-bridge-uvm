@@ -1,0 +1,156 @@
+@startuml axi_lite_to_apb_signal_flow
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+
+title AXI4-Lite to APB4 Bridge Signal Flow Diagram
+
+participant "AXI4-Lite\nMaster" as AXI_M
+box "AXI4-Lite to APB Bridge" #E3F2FD
+    participant "AXI Slave\nInterface" as AXI_IF
+    participant "Read/Write\nChannel\nProcessing" as CHAN
+    participant "Round-Robin\nArbiter" as ARB
+    participant "Request\nPipeline" as REQ_PIPE
+    participant "Address\nDecoder" as ADDR_DEC
+    participant "APB Master\nFSM" as FSM
+    participant "Response\nPipeline" as RESP_PIPE
+end box
+participant "APB4\nSlave[idx]" as APB_S
+
+== AXI Read Transaction ==
+
+AXI_M -> AXI_IF : ar_valid=1\nar.addr, ar.prot
+activate AXI_IF
+
+AXI_IF -> CHAN : Extract AR channel
+activate CHAN
+CHAN -> CHAN : axi_req[RD] = {\n  addr, prot,\n  data=0, strb=0,\n  write=0\n}
+CHAN -> ARB : axi_req[RD]\naxi_req_valid[RD]=1
+deactivate CHAN
+
+activate ARB
+ARB -> ARB : Arbitrate RD vs WR\n(Round-Robin with lock)
+ARB -> REQ_PIPE : arb_req\narb_req_valid=1\nidx=RD
+deactivate ARB
+
+activate REQ_PIPE
+REQ_PIPE -> REQ_PIPE : Pipeline stage\n(Spill or Fall-Through)
+REQ_PIPE -> ADDR_DEC : apb_req.addr
+REQ_PIPE -> FSM : apb_req\napb_req_valid=1
+activate ADDR_DEC
+activate FSM
+
+ADDR_DEC -> ADDR_DEC : Decode address\nusing addr_map_i
+ADDR_DEC -> FSM : apb_sel_idx\napb_dec_valid=1
+deactivate ADDR_DEC
+
+FSM -> FSM : State: Setup\nCheck: apb_req_valid &\napb_dec_valid &\nresp_ready
+
+FSM -> APB_S : <b>Setup Phase</b>\npsel[idx]=1\npenable=0\npwrite=0\npaddr (aligned)
+deactivate REQ_PIPE
+
+activate APB_S
+FSM -> FSM : State → Access
+
+FSM -> APB_S : <b>Access Phase</b>\npsel[idx]=1\npenable=1\npwrite=0\npaddr stable
+
+APB_S -> APB_S : Process read
+APB_S -> FSM : pready=1\nprdata=data\npslverr=0/1
+
+FSM -> FSM : Capture response:\ndata=prdata\nresp=(pslverr ?\n  SLVERR : OKAY)
+deactivate APB_S
+
+FSM -> RESP_PIPE : apb_rresp.data\napb_rresp.resp\napb_rresp_valid=1
+FSM -> FSM : State → Setup\napb_req_ready=1
+deactivate FSM
+
+activate RESP_PIPE
+RESP_PIPE -> RESP_PIPE : Pipeline stage\n(Spill or Fall-Through)
+RESP_PIPE -> AXI_IF : axi_rresp.data\naxi_rresp.resp\naxi_rresp_valid=1
+deactivate RESP_PIPE
+
+AXI_IF -> AXI_M : r_valid=1\nr.data, r.resp
+deactivate AXI_IF
+
+== AXI Write Transaction ==
+
+AXI_M -> AXI_IF : aw_valid=1, w_valid=1\naw.addr, aw.prot\nw.data, w.strb
+activate AXI_IF
+
+AXI_IF -> CHAN : Extract AW & W channels\n(both must be valid)
+activate CHAN
+CHAN -> CHAN : axi_req[WR] = {\n  addr, prot,\n  data, strb,\n  write=1\n}
+CHAN -> ARB : axi_req[WR]\naxi_req_valid[WR]=1
+deactivate CHAN
+
+activate ARB
+ARB -> ARB : Arbitrate RD vs WR
+ARB -> REQ_PIPE : arb_req\narb_req_valid=1\nidx=WR
+deactivate ARB
+
+activate REQ_PIPE
+REQ_PIPE -> ADDR_DEC : apb_req.addr
+REQ_PIPE -> FSM : apb_req\napb_req_valid=1
+activate ADDR_DEC
+activate FSM
+
+ADDR_DEC -> ADDR_DEC : Decode address
+ADDR_DEC -> FSM : apb_sel_idx\napb_dec_valid=1
+deactivate ADDR_DEC
+
+FSM -> FSM : State: Setup\nCheck: apb_dec_valid &\n|apb_req.strb &\nresp_ready
+
+alt Valid Write Transaction
+
+    FSM -> APB_S : <b>Setup Phase</b>\npsel[idx]=1\npenable=0\npwrite=1\npaddr, pwdata, pstrb
+    deactivate REQ_PIPE
+    
+    activate APB_S
+    FSM -> FSM : State → Access
+    
+    FSM -> APB_S : <b>Access Phase</b>\npsel[idx]=1\npenable=1\npwrite=1\nall signals stable
+    
+    APB_S -> APB_S : Process write
+    APB_S -> FSM : pready=1\npslverr=0/1
+    
+    FSM -> FSM : Capture response:\nresp=(pslverr ?\n  SLVERR : OKAY)
+    deactivate APB_S
+    
+    FSM -> RESP_PIPE : apb_wresp\napb_wresp_valid=1
+
+else Decode Error (!apb_dec_valid)
+
+    FSM -> FSM : No APB transaction\nGenerate RESP_DECERR
+    deactivate REQ_PIPE
+    FSM -> RESP_PIPE : apb_wresp=DECERR\napb_wresp_valid=1
+
+else Zero Strobe Write (!|strb)
+
+    FSM -> FSM : No APB transaction\nGenerate RESP_OKAY
+    deactivate REQ_PIPE
+    FSM -> RESP_PIPE : apb_wresp=OKAY\napb_wresp_valid=1
+
+end
+
+FSM -> FSM : State → Setup\napb_req_ready=1
+deactivate FSM
+
+activate RESP_PIPE
+RESP_PIPE -> RESP_PIPE : Pipeline stage
+RESP_PIPE -> AXI_IF : axi_bresp\naxi_bresp_valid=1
+deactivate RESP_PIPE
+
+AXI_IF -> AXI_M : b_valid=1\nb.resp
+deactivate AXI_IF
+
+note over AXI_M, APB_S
+    <b>Key Timing Characteristics:</b>
+    • AXI write requires both AW and W valid simultaneously
+    • Arbiter can handle concurrent AR and AW requests
+    • APB always requires 2 cycles minimum (Setup + Access)
+    • Back-pressure via pipeline ready signals
+    • Single outstanding APB transaction at a time
+end note
+
+@enduml

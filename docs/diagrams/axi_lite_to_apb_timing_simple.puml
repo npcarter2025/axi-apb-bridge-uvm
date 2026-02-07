@@ -1,0 +1,77 @@
+@startuml axi_lite_to_apb_timing_simple
+!theme plain
+skinparam backgroundColor #FFFFFF
+
+title AXI4-Lite to APB4 Bridge - Read Transaction Timing
+
+participant "AXI Master" as AXI
+participant "Bridge\nArbiter" as ARB
+participant "APB FSM" as FSM
+participant "APB Slave" as APB
+
+== Read Transaction ==
+
+AXI -> ARB: AR Valid\naddr=0x1000
+activate ARB
+ARB -> FSM: Grant Read\nRequest
+activate FSM
+
+FSM -> APB: **Setup Phase**\npsel=1, penable=0\npwrite=0, paddr=0x1000
+note right: State: Setup\nCycle 1
+
+FSM -> APB: **Access Phase**\npsel=1, penable=1\npwrite=0
+note right: State: Access\nCycle 2
+
+APB --> FSM: pready=1\nprdata=0xABCD\npslverr=0
+deactivate FSM
+
+FSM -> ARB: Read Response\ndata=0xABCD\nresp=OKAY
+deactivate ARB
+
+ARB -> AXI: R Valid\ndata=0xABCD\nresp=OKAY
+
+== Write Transaction ==
+
+AXI -> ARB: AW Valid & W Valid\naddr=0x2000\ndata=0x5678\nstrb=0xF
+activate ARB
+ARB -> FSM: Grant Write\nRequest
+activate FSM
+
+FSM -> APB: **Setup Phase**\npsel=1, penable=0\npwrite=1, paddr=0x2000\npwdata=0x5678, pstrb=0xF
+note right: State: Setup\nCycle 1
+
+FSM -> APB: **Access Phase**\npsel=1, penable=1\npwrite=1
+note right: State: Access\nCycle 2
+
+APB --> FSM: pready=1\npslverr=0
+deactivate FSM
+
+FSM -> ARB: Write Response\nresp=OKAY
+deactivate ARB
+
+ARB -> AXI: B Valid\nresp=OKAY
+
+== Decode Error ==
+
+AXI -> ARB: AR Valid\naddr=0xBAD\n(unmapped)
+activate ARB
+ARB -> FSM: Grant Read\nRequest
+activate FSM
+
+FSM -> FSM: Address Decode\nFails
+
+note right: No APB Transaction\nGenerate Error
+
+FSM -> ARB: Read Response\nresp=DECERR\ndata=0xDEA110C8
+deactivate FSM
+deactivate ARB
+
+ARB -> AXI: R Valid\nresp=DECERR
+
+note over AXI, APB
+    APB transactions always require minimum 2 cycles
+    Setup Phase: PSEL=1, PENABLE=0
+    Access Phase: PSEL=1, PENABLE=1, wait for PREADY
+end note
+
+@enduml

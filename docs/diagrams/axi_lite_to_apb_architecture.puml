@@ -1,0 +1,109 @@
+@startuml axi_lite_to_apb_architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+title AXI4-Lite to APB4 Bridge Architecture
+
+rectangle "AXI4-Lite Slave Interface" #E3F2FD {
+    component [AR Channel] as AR
+    component [AW Channel] as AW
+    component [W Channel] as W
+    component [R Channel] as R
+    component [B Channel] as B
+}
+
+rectangle "Request Processing" #F3E5F5 {
+    component [Read Request\nExtraction] as RD_REQ
+    component [Write Request\nExtraction] as WR_REQ
+    component [Round-Robin\nArbiter] as ARB
+    component [Request Pipeline\nOptional] as REQ_PIPE
+}
+
+rectangle "Address Decoding" #F3E5F5 {
+    component [Address Decoder\naddr_decode] as ADDR_DEC
+    note right of ADDR_DEC
+        Decodes AXI address
+        to select APB slave
+        using addr_map_i rules
+    end note
+}
+
+rectangle "APB Master FSM" #E8F5E9 {
+    component [FSM Control] as FSM
+    component [State: Setup\nState: Access] as FSM_STATE
+    note right of FSM
+        Setup: PSEL=1, PENABLE=0
+        Access: PSEL=1, PENABLE=1
+        Handles decode errors
+    end note
+}
+
+rectangle "APB Request Generation" #FFF3E0 {
+    component [APB Signal\nGeneration] as APB_REQ
+    note right of APB_REQ
+        Generates:
+        paddr, pprot, psel
+        penable, pwrite
+        pwdata, pstrb
+    end note
+}
+
+rectangle "Response Processing" #F3E5F5 {
+    component [Write Response\nPipeline] as WR_RESP
+    component [Read Response\nPipeline] as RD_RESP
+}
+
+rectangle "APB4 Master Interface" #FFF3E0 {
+    component [APB Output\nSignals] as APB_OUT
+    component [APB Input\nSignals] as APB_IN
+}
+
+' Data flow connections
+AR --> RD_REQ
+AW --> WR_REQ
+W --> WR_REQ
+
+RD_REQ --> ARB : axi_req[RD]
+WR_REQ --> ARB : axi_req[WR]
+
+ARB --> REQ_PIPE : arb_req
+REQ_PIPE --> ADDR_DEC : apb_req
+REQ_PIPE --> FSM : apb_req
+
+ADDR_DEC --> FSM : apb_sel_idx\napb_dec_valid
+FSM --> APB_REQ : FSM controls
+APB_REQ --> APB_OUT : apb_req_o
+
+APB_IN --> FSM : apb_resp_i
+FSM --> WR_RESP : apb_wresp
+FSM --> RD_RESP : apb_rresp
+
+WR_RESP --> B : axi_bresp
+RD_RESP --> R : axi_rresp
+
+note bottom
+    <b>Key Features:</b>
+    • Converts AXI4-Lite to APB4 protocol
+    • Round-robin arbitration between R/W
+    • Optional request/response pipelines
+    • Multi-slave APB support
+    • Decode error handling
+    • Address alignment per APB spec
+end note
+
+legend right
+    <b>Parameters:</b>
+    NoApbSlaves, NoRules
+    AddrWidth, DataWidth
+    PipelineRequest
+    PipelineResponse
+    
+    <b>Error Handling:</b>
+    Decode error → DECERR
+    APB pslverr → SLVERR
+    Zero strobe → OKAY
+end legend
+
+@enduml
