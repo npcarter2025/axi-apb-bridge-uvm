@@ -20,6 +20,8 @@ The spill register is a two-register pipeline stage that provides **complete com
 
 **When to Reference:** Understanding the dual-register architecture and how data moves between stages.
 
+![Architecture](spill_register_architecture.png)
+
 ---
 
 ### 2. FSM Diagram (`fsm.puml`)
@@ -51,6 +53,8 @@ The spill register is a two-register pipeline stage that provides **complete com
 
 **When to Reference:** Understanding state transitions and when backpressure occurs.
 
+![FSM](spill_register_fsm.png)
+
 ---
 
 ### 3. Timing Diagram (`timing.puml`)
@@ -72,6 +76,8 @@ The spill register is a two-register pipeline stage that provides **complete com
 
 **When to Reference:** Understanding timing behavior, latency guarantees, and buffering capacity.
 
+![Timing](spill_register_timing.png)
+
 ---
 
 ### 4. Signal Flow Diagram (`signal_flow.puml`)
@@ -88,6 +94,8 @@ The spill register is a two-register pipeline stage that provides **complete com
   - ✓ Data path is CUT (registered)
 
 **When to Reference:** Timing closure verification, understanding complete signal isolation.
+
+![Signal Flow](spill_register_signal_flow.png)
 
 ---
 

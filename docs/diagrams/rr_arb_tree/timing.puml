@@ -1,0 +1,104 @@
+@startuml rr_arb_tree_timing
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Round-Robin Arbiter Tree Timing Diagram\nShowing Priority Rotation (NumIn=4)
+
+concise "clk_i" as clk
+robust "req_i[3:0]" as req_i
+robust "gnt_i" as gnt_i
+robust "req_o" as req_o
+robust "idx_o" as idx_o
+robust "data_o" as data_o
+robust "gnt_o[3:0]" as gnt_o
+robust "rr_q" as rr_q
+robust "Priority" as priority
+
+@0
+clk is 0
+req_i is "0000"
+gnt_i is 0
+req_o is 0
+idx_o is "-"
+data_o is "-"
+gnt_o is "0000"
+rr_q is 0
+priority is "Input 0"
+
+@100
+clk is 1
+@120
+req_i is "0111"
+@150
+req_o is 1
+idx_o is 0
+data_o is "A"
+gnt_i is 1
+@180
+gnt_o is "0001"
+
+@200
+clk is 0
+
+note bottom of priority : Req 0,1,2 active\nPriority=0, Input 0 wins
+
+@300
+clk is 1
+@320
+rr_q is 1
+priority is "Input 1"
+@350
+idx_o is 1
+data_o is "B"
+@380
+gnt_o is "0010"
+
+@400
+clk is 0
+
+note bottom of priority : Priority rotated to 1\nInput 1 wins
+
+@500
+clk is 1
+@520
+req_i is "0101"
+rr_q is 2
+priority is "Input 2"
+@550
+idx_o is 2
+data_o is "C"
+@580
+gnt_o is "0100"
+
+@600
+clk is 0
+
+note bottom of priority : Priority=2\nInput 2 wins
+
+@700
+clk is 1
+@720
+rr_q is 0
+priority is "Input 0"
+@750
+idx_o is 0
+data_o is "A"
+@780
+gnt_o is "0001"
+
+@800
+clk is 0
+
+note bottom of priority : Priority wrapped to 0
+
+@900
+
+legend bottom
+    Priority rotates after each grant
+    Round-robin ensures fair access
+    idx_o changes combinationally
+    rr_q updates at clock edge
+end legend
+
+@enduml

@@ -1,0 +1,81 @@
+@startuml rr_arb_tree_signal_flow
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+
+title Round-Robin Arbiter Tree Signal Flow\nShowing Priority Rotation
+
+participant "Input 0" as IN0
+participant "Input 1" as IN1
+participant "Input 2" as IN2
+participant "Input 3" as IN3
+box "rr_arb_tree (NumIn=4)" #E3F2FD
+    participant "Arbiter\nTree" as ARB
+    participant "RR State\nrr_q" as RR
+    participant "Output\nInterface" as OUT
+end box
+participant "Downstream\nSlave" as DOWN
+
+== Cycle 1: Initial Priority rr_q=0, Multiple Requests ==
+
+IN0 -> ARB : req_i[0]=1, data_i[0]=A
+IN1 -> ARB : req_i[1]=1, data_i[1]=B
+IN2 -> ARB : req_i[2]=1, data_i[2]=C
+IN3 -> ARB : req_i[3]=0
+
+activate ARB
+RR -> ARB : rr_q = 0\n(Input 0 has priority)
+
+ARB -> ARB : Tree Arbitration:\nLevel 1: 0 vs 1 → 0 wins\nLevel 0: 0 vs 2 → 0 wins
+
+ARB -> OUT : req_o=1\nidx_o=0\ndata_o=A
+activate OUT
+
+OUT -> DOWN : req_o=1, idx_o=0, data_o=A
+DOWN -> OUT : gnt_i=1
+
+OUT -> ARB : gnt_i=1
+ARB -> IN0 : gnt_o[0]=1
+ARB -> RR : Update priority
+
+RR -> RR : rr_q ← 1
+
+note over ARB, RR
+    Grant to Input 0
+    Priority rotates to 1
+end note
+
+deactivate OUT
+deactivate ARB
+
+== Cycle 2: Priority rr_q=1, Input 1 Has Priority ==
+
+IN0 -> ARB : req_i[0]=1
+IN1 -> ARB : req_i[1]=1
+IN2 -> ARB : req_i[2]=1
+
+activate ARB
+RR -> ARB : rr_q = 1
+
+ARB -> ARB : Input 1 wins
+
+ARB -> OUT : idx_o=1, data_o=B
+activate OUT
+
+OUT -> DOWN : req_o=1, idx_o=1
+DOWN -> OUT : gnt_i=1
+
+ARB -> IN1 : gnt_o[1]=1
+RR -> RR : rr_q ← 2
+
+deactivate OUT
+deactivate ARB
+
+legend right
+    Priority rotates after each grant
+    Fair mode: jumps to next unserved
+    Lock-in: prevents change when stalled
+end legend
+
+@enduml

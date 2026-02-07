@@ -1,0 +1,141 @@
+@startuml rr_arb_tree_architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+title Round-Robin Arbiter Tree Architecture\n(Logarithmic Arbitration with Rotating Priorities)
+
+rectangle "rr_arb_tree" {
+    rectangle "Input Interface" #E3F2FD {
+        component [req_i] as req_i
+        component [data_i] as data_i
+        component [gnt_o] as gnt_o
+        note right of req_i
+            NumIn input requesters
+            Each with req/data/gnt
+            Vector width: NumIn
+        end note
+    }
+
+    rectangle "Round-Robin State" #F3E5F5 {
+        component [rr_q Register] as rr_q
+        component [rr_i External] as rr_i
+        note right of rr_q
+            Tracks highest priority input
+            Updated after each grant
+            Can be internal or external
+        end note
+    }
+
+    rectangle "Fair Arbitration Logic\n(if FairArb=1)" #C8E6C9 {
+        component [Upper Mask\nLZC] as upper_lzc
+        component [Lower Mask\nLZC] as lower_lzc
+        component [Next Priority\nCalculation] as next_calc
+        note right of upper_lzc
+            Leading Zero Counter
+            Finds next unserved request
+            with higher index than rr_q
+        end note
+    }
+
+    rectangle "Unfair Arbitration Logic\n(if FairArb=0)" #FFE0B2 {
+        component [Simple Increment:\nrr_d = rr_q + 1] as simple_inc
+        note right of simple_inc
+            Just increments priority
+            Cheaper but unfair
+            when not all inputs active
+        end note
+    }
+
+    rectangle "Lock-In Logic\n(if LockIn=1)" #FFF3E0 {
+        component [lock_q] as lock_q
+        component [req_q] as req_q
+        note right of lock_q
+            Prevents arbitration change
+            when output not granted
+            Avoids request starvation
+        end note
+    }
+
+    rectangle "Arbitration Tree\n(Log(NumIn) Levels)" #E8F5E9 {
+        component [Level N-1\n(Leaf Level)] as level_n
+        component [Level N-2] as level_n2
+        component [Level 0\n(Root)] as level_0
+        note right of level_n
+            Compares pairs of inputs
+            Uses rr_q bits for selection
+            Propagates winner upward
+        end note
+    }
+
+    rectangle "Output Interface" #E1F5FE {
+        component [req_o] as req_o
+        component [data_o] as data_o
+        component [idx_o] as idx_o
+        component [gnt_i] as gnt_i
+        note right of idx_o
+            Index of winning input
+            Valid when req_o=1
+        end note
+    }
+}
+
+' Connections
+req_i --> lock_q : (if LockIn)
+lock_q --> level_n
+req_i --> level_n
+data_i --> level_n
+rr_i --> rr_q : (if ExtPrio)
+
+rr_q --> level_n : Priority bits
+rr_q --> upper_lzc : (if FairArb)
+rr_q --> lower_lzc : (if FairArb)
+rr_q --> simple_inc : (if !FairArb)
+
+upper_lzc --> next_calc
+lower_lzc --> next_calc
+next_calc --> rr_q : Update on grant
+
+level_n --> level_n2 : req, data, index
+level_n2 --> level_0 : Propagate winner
+level_0 --> req_o
+level_0 --> data_o
+level_0 --> idx_o
+
+gnt_i --> level_0 : Grant propagation
+level_0 --> level_n : gnt backward
+level_n --> gnt_o
+
+gnt_i --> rr_q : Update trigger
+
+note bottom
+    <b>Key Features:</b>
+    • Logarithmic arbitration tree: O(log N) delay
+    • Non-starving round-robin: priorities rotate
+    • Fair arbitration (FairArb=1): even throughput distribution
+    • Lock-in (LockIn=1): prevents decision change when stalled
+    • External priority (ExtPrio=1): synchronized arbiters
+    • AXI valid/ready mode (AxiVldRdy=1): reduced delay
+    
+    <b>Parameters:</b>
+    NumIn, DataWidth/DataType, ExtPrio, AxiVldRdy, LockIn, FairArb
+end note
+
+legend right
+    <b>Complexity:</b>
+    Levels: log2(NumIn)
+    Delay: O(log N)
+    Area: O(N log N)
+    
+    <b>Fair vs Unfair:</b>
+    Fair: Uses 2 LZC units
+    Unfair: Simple increment
+    
+    <b>Timing Paths:</b>
+    req_i → req_o: Log(NumIn)
+    data_i → data_o: Log(NumIn)
+    gnt_i → gnt_o: Log(NumIn)
+end legend
+
+@enduml

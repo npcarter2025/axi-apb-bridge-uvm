@@ -1,0 +1,120 @@
+@startuml spill_register_flushable_signal_flow
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequenceArrowThickness 2
+
+title Spill Register Flushable Signal Flow\nShowing Flush Operation
+
+participant "Upstream" as UP
+box "Spill Register Flushable" #E3F2FD
+    participant "Input\nInterface" as INPUT
+    participant "Register A" as REG_A
+    participant "Register B" as REG_B
+    participant "Control\nLogic" as CTRL
+    participant "Output\nMux" as MUX
+    participant "Output\nInterface" as OUTPUT
+end box
+participant "Downstream" as DOWN
+
+== Normal Operation (Data in Both Registers) ==
+
+note over INPUT, REG_B
+    <b>Initial State:</b> BOTH_FULL
+    Register A has data X
+    Register B has data Y
+end note
+
+REG_A -> MUX : a_data_q = X
+activate REG_A
+REG_B -> MUX : b_data_q = Y
+activate REG_B
+CTRL -> MUX : b_full_q = 1 (select B)
+activate MUX
+MUX -> OUTPUT : data_o = Y
+activate OUTPUT
+
+OUTPUT -> DOWN : valid_o=1, data_o=Y
+DOWN -> OUTPUT : ready_i=0 (stalled)
+
+UP -> INPUT : valid_i=1, data_i=Z
+activate INPUT
+CTRL -> INPUT : ready_o=0 (both full)
+INPUT -> INPUT : Cannot accept Z
+
+note over INPUT, OUTPUT
+    <b>Both Registers Full:</b>
+    Backpressure active, new data rejected
+end note
+
+== Flush Operation Triggered ==
+
+UP -> INPUT : flush_i=1
+INPUT -> CTRL : flush_i=1
+
+CTRL -> CTRL : <b>Flush Logic Activates:</b>\na_drain = flush_i = 1\nb_drain = flush_i = 1
+
+CTRL -> REG_A : a_drain=1\nClear a_full_q
+REG_A -> REG_A : a_full_q ← 0\na_data_q ← 0
+deactivate REG_A
+
+CTRL -> REG_B : b_drain=1\nClear b_full_q
+REG_B -> REG_B : b_full_q ← 0\nb_data_q ← 0
+deactivate REG_B
+
+CTRL -> OUTPUT : valid_o ← 0\n(a_full | b_full = 0)
+CTRL -> INPUT : ready_o ← 1\n(!a_full | !b_full = 1)
+
+MUX -> OUTPUT : data_o = 0\n(both empty)
+deactivate MUX
+
+note over INPUT, OUTPUT
+    <b>Flush Complete:</b>
+    • Both registers cleared in same cycle
+    • Pipeline is empty
+    • Ready to accept new data
+    • No valid output
+end note
+
+deactivate OUTPUT
+deactivate INPUT
+
+== Resume After Flush ==
+
+UP -> INPUT : flush_i=0, valid_i=1, data_i=A
+activate INPUT
+
+INPUT -> CTRL : Check status
+CTRL -> INPUT : ready_o=1 (empty)
+
+INPUT -> REG_A : a_fill=1, data_i=A
+activate REG_A
+
+DOWN -> OUTPUT : ready_i=1
+
+note over INPUT, REG_A
+    <b>Normal Operation Resumed:</b>
+    System back to accepting data
+end note
+
+deactivate INPUT
+deactivate REG_A
+
+legend right
+    <b>Flush Control Equations:</b>
+    
+    a_drain = (a_full_q & !b_full_q) | flush_i
+    b_drain = (b_full_q & ready_i) | flush_i
+    
+    <b>Key Points:</b>
+    • flush_i overrides normal drain logic
+    • Both registers clear simultaneously
+    • a_fill and b_fill blocked when flush_i=1
+    • Assertion prevents flush_i & valid_i conflict
+    
+    <b>Bypass Mode:</b>
+    When Bypass=1, flush_i has no effect
+    (registers bypassed entirely)
+end legend
+
+@enduml

@@ -1,0 +1,126 @@
+@startuml spill_register_flushable_architecture
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+title Spill Register Flushable Architecture\n(With Flush Capability and Optional Bypass Mode)
+
+rectangle "Spill Register Flushable" {
+    rectangle "Input Interface" #E3F2FD {
+        component [valid_i] as valid_i
+        component [data_i] as data_i
+        component [ready_o] as ready_o
+        component [flush_i] as flush_i
+        note right of flush_i
+            Synchronous flush
+            Clears both registers
+            immediately
+        end note
+    }
+
+    rectangle "Bypass Mode (if Bypass=1)" #C8E6C9 {
+        component [Transparent\nConnection] as bypass
+        note right of bypass
+            When parameter Bypass=1:
+            valid_o = valid_i
+            ready_o = ready_i
+            data_o = data_i
+            (No registers)
+        end note
+    }
+
+    rectangle "Register A (Slice Register)" #FFF3E0 {
+        component [a_data_q] as a_data
+        component [a_full_q] as a_full
+        note right of a_data
+            Primary entry point
+            Clocked register
+            Resets to 0 on !rst_ni
+            Clears on flush_i
+        end note
+    }
+
+    rectangle "Register B (Spill Register)" #FFEBEE {
+        component [b_data_q] as b_data
+        component [b_full_q] as b_full
+        note right of b_data
+            Secondary buffer
+            Receives from A
+            Clears on flush_i
+        end note
+    }
+
+    rectangle "Fill/Drain Control Logic" #F3E5F5 {
+        component [a_fill Control] as a_fill_ctrl
+        component [a_drain Control] as a_drain_ctrl
+        component [b_fill Control] as b_fill_ctrl
+        component [b_drain Control] as b_drain_ctrl
+    }
+
+    rectangle "Output Multiplexer" #E8F5E9 {
+        component [Data Selection:\ndata_o = b_full_q ?\nb_data_q : a_data_q] as mux
+    }
+
+    rectangle "Output Interface" #E1F5FE {
+        component [valid_o] as valid_o
+        component [data_o] as data_o
+        component [ready_i] as ready_i
+    }
+}
+
+' Connections
+valid_i --> a_fill_ctrl
+data_i --> a_data : When a_fill
+flush_i --> a_drain_ctrl : Forces drain
+flush_i --> b_drain_ctrl : Forces drain
+
+a_fill_ctrl --> a_data
+a_drain_ctrl --> a_full
+a_data --> b_data : When b_fill
+a_data --> mux
+a_full --> ready_o : ready_o = !a_full_q | !b_full_q
+
+b_fill_ctrl --> b_data
+b_drain_ctrl --> b_full
+b_data --> mux
+b_full --> valid_o : valid_o = a_full_q | b_full_q
+b_full --> mux : Select
+
+mux --> data_o
+ready_i --> b_drain_ctrl
+
+bypass -.-> data_o : Bypass mode
+
+note bottom
+    <b>Control Equations:</b>
+    a_fill = valid_i & ready_o & !flush_i
+    a_drain = (a_full_q & !b_full_q) | flush_i
+    b_fill = a_drain & !ready_i & !flush_i
+    b_drain = (b_full_q & ready_i) | flush_i
+    
+    <b>Key Features:</b>
+    • Flush capability clears both registers immediately
+    • Optional bypass mode (Bypass parameter)
+    • Complete combinational path isolation (non-bypass mode)
+    • Two-register buffering capacity
+    • Assertion checks for flush+valid conflict
+end note
+
+legend right
+    <b>Modes:</b>
+    Bypass=0: Full isolation (default)
+    Bypass=1: Transparent passthrough
+    
+    <b>Timing Isolation (Bypass=0):</b>
+    ✓ Ready path: Cut
+    ✓ Valid path: Cut
+    ✓ Data path: Cut
+    
+    <b>Flush Behavior:</b>
+    flush_i forces immediate drain
+    of both registers
+    (Must not coincide with valid_i)
+end legend
+
+@enduml

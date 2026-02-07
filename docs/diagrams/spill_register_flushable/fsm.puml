@@ -1,0 +1,93 @@
+@startuml spill_register_flushable_fsm
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Spill Register Flushable State Machine\n(With Flush Transitions from All States)
+
+[*] --> EMPTY : Reset
+
+state "EMPTY\n(Both Empty)" as EMPTY #E8F5E9 {
+    EMPTY : a_full_q = 0
+    EMPTY : b_full_q = 0
+    EMPTY : ready_o = 1
+    EMPTY : valid_o = 0
+}
+
+state "A_ONLY\n(Only A Full)" as A_ONLY #FFF3E0 {
+    A_ONLY : a_full_q = 1
+    A_ONLY : b_full_q = 0
+    A_ONLY : ready_o = 1
+    A_ONLY : valid_o = 1
+    A_ONLY : data_o = a_data_q
+}
+
+state "B_ONLY\n(Only B Full)" as B_ONLY #FFEBEE {
+    B_ONLY : a_full_q = 0
+    B_ONLY : b_full_q = 1
+    B_ONLY : ready_o = 1
+    B_ONLY : valid_o = 1
+    B_ONLY : data_o = b_data_q
+}
+
+state "BOTH_FULL\n(Both Full)" as BOTH #FFCDD2 {
+    BOTH : a_full_q = 1
+    BOTH : b_full_q = 1
+    BOTH : ready_o = 0
+    BOTH : valid_o = 1
+    BOTH : data_o = b_data_q
+}
+
+' Normal transitions from EMPTY
+EMPTY --> A_ONLY : valid_i=1 & ready_i=0 & !flush_i
+EMPTY --> EMPTY : valid_i=1 & ready_i=1 & !flush_i
+EMPTY --> EMPTY : valid_i=0 & !flush_i
+
+' Normal transitions from A_ONLY
+A_ONLY --> BOTH : valid_i=1 & ready_i=0 & !flush_i
+A_ONLY --> A_ONLY : valid_i=1 & ready_i=1 & !flush_i
+A_ONLY --> EMPTY : valid_i=0 & ready_i=1 & !flush_i
+A_ONLY --> B_ONLY : valid_i=0 & ready_i=0 & !flush_i
+
+' Normal transitions from B_ONLY
+B_ONLY --> BOTH : valid_i=1 & ready_i=0 & !flush_i
+B_ONLY --> A_ONLY : valid_i=1 & ready_i=1 & !flush_i
+B_ONLY --> EMPTY : valid_i=0 & ready_i=1 & !flush_i
+B_ONLY --> B_ONLY : valid_i=0 & ready_i=0 & !flush_i
+
+' Normal transitions from BOTH_FULL
+BOTH --> A_ONLY : valid_i=0 & ready_i=1 & !flush_i
+BOTH --> B_ONLY : valid_i=1 & ready_i=1 & !flush_i
+BOTH --> BOTH : ready_i=0 & !flush_i
+
+' Flush transitions (from all states)
+A_ONLY -[#red,bold]-> EMPTY : <color:red><b>flush_i=1</b></color>
+B_ONLY -[#red,bold]-> EMPTY : <color:red><b>flush_i=1</b></color>
+BOTH -[#red,bold]-> EMPTY : <color:red><b>flush_i=1</b></color>
+
+note right of EMPTY
+    <b>Flush Feature:</b>
+    From ANY state, flush_i=1
+    forces immediate return to EMPTY
+    
+    Both a_drain and b_drain are
+    activated by flush_i
+    
+    <b>Warning:</b>
+    flush_i and valid_i must
+    NOT be asserted together!
+end note
+
+note bottom
+    <b>Flush Behavior:</b>
+    • flush_i forces a_drain = 1 and b_drain = 1
+    • Both registers cleared in same cycle
+    • Overrides normal fill/drain logic
+    • Assertion checks prevent flush+valid conflict
+    
+    <b>Use Case:</b>
+    Pipeline abort, error recovery,
+    or protocol reset scenarios
+end note
+
+@enduml

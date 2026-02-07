@@ -1,0 +1,107 @@
+@startuml rr_arb_tree_fsm
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+
+title Round-Robin Arbiter State Machine\n(Priority Rotation Logic)
+
+[*] --> IDLE : Reset\nrr_q = 0
+
+state "IDLE\nNo Requests" as IDLE #E8F5E9 {
+    IDLE : req_o = 0
+    IDLE : gnt_o = 0
+    IDLE : rr_q = current priority
+    IDLE : Waiting for requests
+}
+
+state "ARBITRATING\nRequest Pending" as ARB #FFF3E0 {
+    ARB : req_o = 1
+    ARB : idx_o = winner index
+    ARB : data_o = winner data
+    ARB : gnt_o = 0 (waiting)
+    ARB : Tree selects based on rr_q
+}
+
+state "LOCKED\n(if LockIn=1)" as LOCKED #FFEBEE {
+    LOCKED : req_o = 1
+    LOCKED : idx_o = locked index
+    LOCKED : gnt_o = 0
+    LOCKED : lock_q = 1
+    LOCKED : Cannot change decision
+}
+
+state "GRANTED\nTransaction Complete" as GRANTED #C8E6C9 {
+    GRANTED : req_o = 1
+    GRANTED : gnt_i = 1
+    GRANTED : gnt_o[idx_o] = 1
+    GRANTED : rr_q updates to next priority
+}
+
+IDLE --> ARB : |req_i = 1\n[At least one request]
+
+ARB --> GRANTED : gnt_i = 1\n[Grant received]
+
+ARB --> LOCKED : gnt_i = 0 & LockIn=1\n[Lock arbitration decision]
+
+LOCKED --> GRANTED : gnt_i = 1\n[Grant finally received]
+
+LOCKED --> LOCKED : gnt_i = 0\n[Still waiting]
+
+GRANTED --> IDLE : |req_i = 0\n[No more requests]
+
+GRANTED --> ARB : |req_i = 1\n[More requests pending]
+
+IDLE --> IDLE : |req_i = 0\n[No requests]
+
+IDLE -[#red,bold]-> IDLE : <color:red><b>flush_i=1</b></color>\n[Reset rr_q]
+ARB -[#red,bold]-> IDLE : <color:red><b>flush_i=1</b></color>\n[Reset state]
+LOCKED -[#red,bold]-> IDLE : <color:red><b>flush_i=1</b></color>\n[Clear lock]
+GRANTED -[#red,bold]-> IDLE : <color:red><b>flush_i=1</b></color>\n[Reset priority]
+
+note right of ARB
+    <b>Arbitration Decision:</b>
+    • Tree compares all req_i
+    • Selects based on rr_q priority
+    • Input rr_q has highest priority
+    • Selection propagates up tree
+    • Winner index and data output
+end note
+
+note right of LOCKED
+    <b>Lock-In Behavior:</b>
+    • Enabled when LockIn=1
+    • Freezes idx_o when !gnt_i
+    • Prevents arbitration change
+    • Ensures fairness under
+      back-pressure
+    • Releases when gnt_i=1
+end note
+
+note right of GRANTED
+    <b>Priority Update:</b>
+    
+    <b>Fair Mode (FairArb=1):</b>
+    rr_q ← next unserved request
+    (uses LZC to find next)
+    
+    <b>Unfair Mode (FairArb=0):</b>
+    rr_q ← (rr_q + 1) % NumIn
+    (simple wrap-around)
+    
+    <b>External Mode (ExtPrio=1):</b>
+    rr_q ← rr_i (provided externally)
+end note
+
+legend bottom
+    <b>Key State Transitions:</b>
+    • IDLE: No requests, waiting
+    • ARBITRATING: Tree selecting winner
+    • LOCKED: Decision frozen (optional)
+    • GRANTED: Transaction completing, priority updates
+    
+    <b>Priority Rotation:</b>
+    After each grant, priority moves to next input,
+    ensuring all inputs get fair access
+end legend
+
+@enduml
