@@ -122,6 +122,12 @@ behavior is "IDLE"
 
 @1400
 
+highlight 100 to 400 #C8E6C9 : Fall-Through (Zero Latency)
+highlight 500 to 600 #FFE0B2 : Buffering
+highlight 700 to 800 #FFCDD2 : Backpressure
+highlight 900 to 1000 #E1F5FE : Draining
+highlight 1100 to 1200 #C8E6C9 : Fall-Through Again
+
 legend bottom
     <b>Key Observations:</b>
     • Cycles 1-2: Zero-latency operation (data passes through same cycle)
