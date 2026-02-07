@@ -194,9 +194,16 @@ axi-apb-bridge-uvm/
     └── COVERAGE_PLAN.md
 ```
 
+# DUT
+![Design Under Test](docs/diagrams/axi_lite_to_apb_architecture.png)
+![Design Under Test](docs/diagrams/axi_lite_to_apb_fsm.png)
+![Design Under Test](docs/diagrams/axi_lite_to_apb_signal_flow.png)
+![Design Under Test](docs/diagrams/axi_lite_to_apb_timing_simple.png)
+![Design Under Test](docs/diagrams/axi_lite_to_apb_timing.png)
 
 
 ### Component Interaction Diagram
+
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -246,25 +253,6 @@ This project follows AMD's modular verification structure:
 - **Clean separation** - Build artifacts isolated in `sim/`
 - **Scalable** - Ready for UVM and regression frameworks
 
-## Getting Started
-
-### Prerequisites
-
-- **VCS T-2022.06 or later** (Synopsys simulator)
-- **Git** with SSH key configured for GitHub
-- **Make** (GNU Make)
-- **SystemVerilog** knowledge for testbench development
-
-### Clone the Repository
-
-```bash
-# Clone with submodules
-git clone --recurse-submodules git@github.com:npcarter2025/AXI_TO_APB_BRIDGE_UVM.git
-cd AXI_TO_APB_BRIDGE_UVM
-
-# Or if already cloned without --recurse-submodules:
-git submodule update --init --recursive
-```
 
 ### Quick Test
 
