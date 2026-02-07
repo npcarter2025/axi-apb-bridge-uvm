@@ -32,127 +32,110 @@ a_data is "-"
 b_data is "-"
 state is "EMPTY"
 
-' Cycle 1: First data arrives
-@100
+@25
 clk is 1
-@150
+@37
 valid_i is 1
 data_i is "A"
 
-@200
+@50
 clk is 0
-note bottom of state : Data A enters: Captured into Register A
 
-' Cycle 2: A is full, data appears at output (minimum 1 cycle latency)
-@300
+@75
 clk is 1
-@320
+@80
 a_full is 1
 a_data is "A"
 valid_o is 1
 data_o is "A"
 state is "A_ONLY"
-@350
+@87
 data_i is "B"
 
-@400
+@100
 clk is 0
-note bottom of state : 1 Cycle Latency: Data A now visible\nNew data B arrives
 
-' Cycle 3: Downstream stalls, A drains to B
-@500
+@125
 clk is 1
-@520
+@130
 ready_i is 0
-@550
+@137
 data_i is "C"
 b_full is 1
 b_data is "A"
 a_data is "B"
-data_o is "A"
 state is "BOTH_FULL"
 
-@600
+@150
 clk is 0
-note bottom of state : Both Full: B←A, A←C\nBackpressure coming
 
-' Cycle 4: Cannot accept more data
-@700
+@175
 clk is 1
-@720
+@180
 ready_o is 0
-@750
+@187
 data_i is "D"
-data_o is "A"
 
-@800
+@200
 clk is 0
-note bottom of state : Backpressure: ready_o=0\nData D rejected
 
-' Cycle 5: Downstream ready, B drains
-@900
+@225
 clk is 1
-@920
+@230
 ready_i is 1
-@950
+@237
 b_full is 0
 data_o is "B"
 ready_o is 1
 state is "A_ONLY"
 
-@1000
+@250
 clk is 0
-note bottom of state : B Drains: A consumed\nShowing B, ready_o=1
 
-' Cycle 6: A drains, accept new data D
-@1100
+@275
 clk is 1
-@1120
+@280
 valid_i is 1
 data_i is "D"
-@1150
+@287
 a_data is "D"
 data_o is "C"
 
-@1200
+@300
 clk is 0
-note bottom of state : A Drains: B consumed\nShowing C, D enters A
 
-' Cycle 7: D visible
-@1300
+@325
 clk is 1
-@1350
+@337
 data_o is "D"
 
-@1400
+@350
 clk is 0
-note bottom of state : Output D: C consumed
 
-' Cycle 8: valid_i drops
-@1500
+@375
 clk is 1
-@1520
+@380
 valid_i is 0
-data_i is "-"
 
-@1600
+@400
 clk is 0
 
-' Cycle 9: Back to empty
-@1700
+@425
 clk is 1
-@1720
+@430
 a_full is 0
-a_data is "-"
 valid_o is 0
 data_o is "-"
 state is "EMPTY"
 
-@1800
-clk is 0
-note bottom of state : Empty: All data consumed
+@450
 
-@1900
+highlight 25 to 50 #E1F5FE : Data Entry
+highlight 75 to 100 #C8E6C9 : 1 Cycle Latency
+highlight 125 to 150 #FFE0B2 : Both Filling
+highlight 175 to 200 #FFCDD2 : Backpressure
+highlight 225 to 250 #E8F5E9 : B Drains
+highlight 275 to 300 #C8E6C9 : A Drains
 
 legend bottom
     <b>Key Observations:</b>

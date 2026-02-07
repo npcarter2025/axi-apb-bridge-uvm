@@ -131,6 +131,11 @@ clk is 0
 
 @1700
 
+highlight 100 to 600 #C8E6C9 : Normal Fill Operation
+highlight 700 to 800 #FF6B6B : Flush Triggered
+highlight 900 to 1000 #E1F5FE : Registers Cleared
+highlight 1100 to 1600 #E8F5E9 : Normal Operation Resumed
+
 legend bottom
     <b>Flush Operation:</b>
     • Cycle 4: flush_i asserted while both registers full
